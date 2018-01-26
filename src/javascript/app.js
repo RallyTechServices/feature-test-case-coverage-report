@@ -35,12 +35,29 @@ Ext.define("CArABU.app.TSApp", {
                 stateful: true,
                 stateId: me.getContext().getScopedStateId('releaseCombo'),   
                 fieldLabel: 'Select Release:',
-                // margin: '10 10 10 10', 
-                // width: 450,
-                // labelWidth: 100,
+                multiSelect: true,
+                margin: '10 10 10 10', 
+                width: 450,
+                labelWidth: 100,
+                cls: 'rally-checkbox-combobox',
+                valueField:'Name',
+                displayField: 'Name',
                 listeners: {
                     change: me.updateView,
                     scope: me
+                }
+                ,
+                listConfig: {
+                    cls: 'rally-checkbox-boundlist',
+                    itemTpl: Ext.create('Ext.XTemplate',
+                        '<div class="rally-checkbox-image"></div>',
+                        '{[this.getDisplay(values)]}</div>',
+                        {
+                            getDisplay: function(values){
+                                return values.Name;
+                            }
+                        }
+                    )
                 }
             }
         ]);
@@ -48,27 +65,12 @@ Ext.define("CArABU.app.TSApp", {
 
     updateView: function(){
         var me = this;
-        
-        // console.log('Release: ',me.down('#releaseCombo'));
-
-        // var filter = [{
-        //     property:'Release',
-        //     value: me.down('#releaseCombo').value
-        // }]
-
-        // Ext.create('Rally.data.wsapi.TreeStoreBuilder').build({
-        //     models: me.modelNames,
-        //     enableHierarchy: true,
-        //     filters: filter
-        // }).then({
-        //     success: me._addGrid,
-        //     scope: me
-        // });
 
 
         if(!me.down('#releaseCombo')) return;
-
+        console.log('releases >',me.down('#releaseCombo').value);
         var pi_object_ids = [];
+
 
         me.setLoading(true);
         me._getSelectedPIs(me.modelNames[0]).then({
@@ -270,7 +272,17 @@ Ext.define("CArABU.app.TSApp", {
         var me = this;
         var context = me.getContext();
         store.on('load', me._updateAssociatedData, me);
-        
+        var r_filters = [];
+        Ext.Array.each(me.down('#releaseCombo').value, function(rel){
+            r_filters.push({
+                property: 'Release.Name',
+                value: rel
+            })
+        });
+
+        r_filters = Rally.data.wsapi.Filter.or(r_filters)
+
+        console.log('Filter>>', r_filters && r_filters.toString());
         me.down('#display_box').removeAll();
         
         me.down('#display_box').add({
@@ -284,6 +296,9 @@ Ext.define("CArABU.app.TSApp", {
                   gridConfig: {
                     store: store,
                     enableEditing: false,
+                      storeConfig:{
+                        filters: r_filters
+                      },                       
                     columnCfgs: [
                           'Name',
                           'ScheduleState',
@@ -318,15 +333,6 @@ Ext.define("CArABU.app.TSApp", {
 
             Ext.Array.each(me.lb_tc_results,function(lbTc){
                 if(Ext.Array.contains(lbTc.get('_ItemHierarchy'),r.get('ObjectID'))){
-                    // if(lbTc.get('LastVerdict') == "Pass"){
-                    //     totalPass++;
-                    // }else if(lbTc.get('LastVerdict')  == "Fail"){
-                    //     totalFail++
-                    // }else if(lbTc.get('LastVerdict')  == null || lbTc.get('LastVerdict')  == ""){
-                    //     totalNoRun++
-                    // }else{
-                    //     totalOther++
-                    // }                    
                     if(me.lastVerdict[lbTc.get('ObjectID')] == "Pass"){
                         totalPass++;
                     }else if(me.lastVerdict[lbTc.get('ObjectID')] == "Fail"){
@@ -424,7 +430,17 @@ Ext.define("CArABU.app.TSApp", {
         return [{
             tpl: '<div style="text-align:center;"></div>',
             text: 'Result Graph',
-            xtype: 'templatecolumn'
+            xtype: 'templatecolumn',
+            renderer: function(value, metaData, record){
+                var values = {'lightgreen':record.get('Passing'),'red':record.get('Failing'),'yellow':record.get('NoRun'),'blue':record.get('Other')}
+
+                if (values && Ext.isObject(values)){
+                    var tpl = Ext.create('CArABU.technicalservices.ResultGraphTemplate');
+                    return tpl.apply(values);
+                }
+
+                return '';
+            }
         },{
             tpl: '<div style="text-align:center;">{Passing}</div>',
             text: 'Passing',
@@ -441,6 +457,20 @@ Ext.define("CArABU.app.TSApp", {
             tpl: '<div style="text-align:center;">{Other}</div>',
             text: 'Other',
             xtype: 'templatecolumn'
+        },{
+            tpl: '<div style="text-align:center;"></div>',
+            text: 'User Story Coverage',
+            xtype: 'templatecolumn',
+            renderer: function(value, metaData, record){
+                var values = {'lightgreen':record.get('TotalCovered'),'white': (record.get('TotalStories') - record.get('TotalCovered'))}
+
+                if (values && Ext.isObject(values)){
+                    var tpl = Ext.create('CArABU.technicalservices.ResultGraphTemplate');
+                    return tpl.apply(values);
+                }
+
+                return '';
+            }
         },{
             tpl: '<div style="text-align:center;">{TotalCovered}</div>',
             text: 'User Stories Covered',
