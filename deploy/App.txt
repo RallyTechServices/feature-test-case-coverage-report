@@ -3,13 +3,13 @@
 <head>
     <title>CATS-Feature Test Case Coverage Report-0.1</title>
     <!--  (c) 2017 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Fri Jan 26 2018 11:18:10 GMT-0800 (PST) -->
+    <!--  Build Date: Fri Jan 26 2018 13:21:09 GMT-0800 (PST) -->
 
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Fri Jan 26 2018 11:18:10 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Fri Jan 26 2018 13:21:09 GMT-0800 (PST)";
         var ARTIFACT = "F425";
         var BUILDER  = "rajan08";
-        var CHECKSUM = 23551585929;
+        var CHECKSUM = 23663009124;
     </script>
 
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -621,11 +621,7 @@ Ext.define("CArABU.app.TSApp", {
                 labelWidth: 100,
                 cls: 'rally-checkbox-combobox',
                 valueField:'Name',
-                displayField: 'Name',
-                listeners: {
-                    change: me.updateView,
-                    scope: me
-                }
+                displayField: 'Name'
                 ,
                 listConfig: {
                     cls: 'rally-checkbox-boundlist',
@@ -638,6 +634,17 @@ Ext.define("CArABU.app.TSApp", {
                             }
                         }
                     )
+                }
+            },
+            {
+                xtype:'rallybutton',
+                name: 'updateButton',
+                itemId: 'updateButton',
+                margin: '10 10 10 10',
+                text: 'Update',
+                listeners: {
+                    click: me.updateView,
+                    scope: me
                 }
             }
         ]);
@@ -980,7 +987,7 @@ Ext.define("CArABU.app.TSApp", {
             headerPosition: 'left',
             modelNames: me.modelNames,
             stateful: true,
-            gridAlwaysSelectedValues: ['Name','Owner'],
+            gridAlwaysSelectedValues: ['Name'],
             stateId: me.getContext().getScopedStateId('field-picker')
         });
 
@@ -998,10 +1005,6 @@ Ext.define("CArABU.app.TSApp", {
         {
             dataIndex: 'ScheduleState',
             text: 'Schedule State'
-        },
-        {
-            dataIndex: 'Owner',
-            text: 'Owner'
         }
         ].concat(me.getDerivedColumns());
     },

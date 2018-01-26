@@ -41,11 +41,7 @@ Ext.define("CArABU.app.TSApp", {
                 labelWidth: 100,
                 cls: 'rally-checkbox-combobox',
                 valueField:'Name',
-                displayField: 'Name',
-                listeners: {
-                    change: me.updateView,
-                    scope: me
-                }
+                displayField: 'Name'
                 ,
                 listConfig: {
                     cls: 'rally-checkbox-boundlist',
@@ -58,6 +54,17 @@ Ext.define("CArABU.app.TSApp", {
                             }
                         }
                     )
+                }
+            },
+            {
+                xtype:'rallybutton',
+                name: 'updateButton',
+                itemId: 'updateButton',
+                margin: '10 10 10 10',
+                text: 'Update',
+                listeners: {
+                    click: me.updateView,
+                    scope: me
                 }
             }
         ]);
@@ -400,7 +407,7 @@ Ext.define("CArABU.app.TSApp", {
             headerPosition: 'left',
             modelNames: me.modelNames,
             stateful: true,
-            gridAlwaysSelectedValues: ['Name','Owner'],
+            gridAlwaysSelectedValues: ['Name'],
             stateId: me.getContext().getScopedStateId('field-picker')
         });
 
@@ -418,10 +425,6 @@ Ext.define("CArABU.app.TSApp", {
         {
             dataIndex: 'ScheduleState',
             text: 'Schedule State'
-        },
-        {
-            dataIndex: 'Owner',
-            text: 'Owner'
         }
         ].concat(me.getDerivedColumns());
     },
