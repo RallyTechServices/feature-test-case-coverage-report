@@ -5,11 +5,19 @@ Ext.define("CArABU.app.TSApp", {
     defaults: { margin: 10 },
     layout: 'border',
 
+    // items: [
+    //     {xtype:'container',itemId:'selector_box', layout:{type:'hbox',align: 'right'}, margin: '10 10 50 10'},
+    //     {xtype:'container',itemId:'top_box',layout:{type:'hbox'},
+    //     items: [{xtype:'container',itemId:'totals_f_box',layout:{type:'hbox'}, margin: '10 10 50 10'},
+    //             {xtype:'container',itemId:'totals_box',layout:{type:'hbox'}, margin: '10 10 50 10'}]
+    //         },
+    //     {xtype:'container',itemId:'display_box', margin: '100 10 10 10' }
+    // ],
     items: [
-        {xtype:'container',itemId:'selector_box',layout:{type:'hbox'}, margin: '10 10 50 10' },
-        {xtype:'container',itemId:'display_box', margin: '50 10 10 10' }
+        {xtype:'container',itemId:'top_box',layout:{type:'hbox'},items: [{xtype:'container',itemId:'selector_box',layout:{type:'hbox'}, margin: '10 10 50 10'},
+        {xtype:'container',itemId:'totals_box', layout:{type:'hbox',align: 'right'}, margin: '10 10 50 10'}]},
+        {xtype:'container',itemId:'display_box', margin: '100 10 10 10' }
     ],
-
     integrationHeaders : {
         name : "CArABU.app.TSApp"
     },
@@ -83,6 +91,9 @@ Ext.define("CArABU.app.TSApp", {
         me._getSelectedPIs(me.modelNames[0]).then({
             success: function(records){
                 // console.log('_getSelectedPIs>>',records);
+                if(records.length == 0){
+                    me.showErrorNotification('No Data found!');
+                }
                 Ext.Array.each(records,function(r){
                     pi_object_ids.push(r.get('ObjectID'));
                 });
@@ -131,6 +142,8 @@ Ext.define("CArABU.app.TSApp", {
 
             },
             scope: me         
+        }).always(function(){
+            me.setLoading(false);
         });
 
 
@@ -140,7 +153,7 @@ Ext.define("CArABU.app.TSApp", {
         var me = this;
         var config = {
                         model : selectedPI,
-                        fetch : ['ObjectID','AcceptedLeafStoryPlanEstimateTotal','LeafStoryPlanEstimateTotal','PlanEstimate','ScheduleState'],
+                        fetch : ['ObjectID','FormattedID'],
                         limit:'Infinity'
                     }
         if(filters){
@@ -207,8 +220,8 @@ Ext.define("CArABU.app.TSApp", {
             "fetch": [ "ObjectID","LastVerdict","_ItemHierarchy"],
             "find": find,
             "useHttpPost": true
-            // ,
-            // "removeUnauthorizedSnapshots":true
+            ,
+            "removeUnauthorizedSnapshots":true
         });
 
         snapshotStore.load({
@@ -248,8 +261,8 @@ Ext.define("CArABU.app.TSApp", {
             "fetch": [ "ObjectID","_ItemHierarchy","FormattedID","TestCases"],
             "find": find,
             "useHttpPost": true
-            // ,
-            // "removeUnauthorizedSnapshots":true
+            ,
+            "removeUnauthorizedSnapshots":true
         });
 
         snapshotStore.load({
@@ -291,37 +304,205 @@ Ext.define("CArABU.app.TSApp", {
 
         console.log('Filter>>', r_filters && r_filters.toString());
         me.down('#display_box').removeAll();
-        
+        console.log("heights and widhths",this.getHeight(),this.getWidth(),me.getHeight(),me.getWidth(),me.down('#display_box').getHeight(),me.down('#display_box').getWidth());
+        var height = me.down('#display_box').getHeight(),
+            width = me.down('#display_box').getWidth();
         me.down('#display_box').add({
                   itemId: 'pigridboard',
                   xtype: 'rallygridboard',
                   context: context,
                   modelNames: me.modelNames,
                   toggleState: 'grid',
-                  stateful: false,
+                  // stateful: true,
+                  // stateId: context.getScopedStateId('gridboard_state1'),      
                   plugins: me._getPlugins(),
                   gridConfig: {
                     store: store,
                     enableEditing: false,
-                      storeConfig:{
+                    storeConfig:{
                         filters: r_filters
-                      },                       
-                    columnCfgs: [
-                          'Name',
-                          'ScheduleState',
-                          'Owner',
-                          'PlanEstimate'
-                      ],
+                    },
+                    stateful: true,
+                    stateId: context.getScopedStateId('gridboard_state'),                                         
+                    columnCfgs: me._getColumnCfgs(),
                     derivedColumns: me.getDerivedColumns(),
                     shouldShowRowActionsColumn:false,
                     enableRanking: false,
-                    enableBulkEdit: false
+                    enableBulkEdit: false,
+                    sortableColumns: true,
+                    folderSort:true,
+                    // ,
+                    // listeners:{
+                    //     sortchange: function(ct, column, direction, eOpts){
+                    //         console.log(ct, column, direction, eOpts);
+                    //             this.sorters = {
+                    //                 property: column.dataIndex,
+                    //                 direction: direction,
+                    //                 sorterFn  : function(v1, v2){
+                    //                     console.log("v1,v2>>",v1,v2)
+                    //                      v1 = v1.get('Release')['Name'] || '' ;
+                    //                      v2 = v2.get('Release')['Name'] || '' ;
+                    //                     return v1 > v2 ? 1 : v1 < v2 ? -1 : 0;
+                    //                 }                                    
+                    //             }                            
+                    //     }
+                    // }
                   },
-                  height: me.getHeight(),
-                  width: me.getWidth()
+                    listeners: {
+                        load: me._addTotals,
+                        scope: me
+                    },                  
+                  height: height,
+                  width: width
               });
 
         me.setLoading(false);
+    },
+
+
+   _addTotals:function(grid) {
+        var me = this;
+        // var filters = me.down('#pigridboard') && me.down('#pigridboard').gridConfig.store.filters.items[0];
+        var filters = grid && grid.gridConfig.store.filters.items[0];
+        var allPi;
+        me.setLoading('Loading totals...');
+            me._getSelectedPIs(me.modelNames[0],filters).then({
+                success: function(records){
+
+
+                    var totalPass = 0;
+                    var totalFail = 0;
+                    var totalNoRun = 0;
+                    var totalOther = 0;
+                    var grandTotal = 0;
+                    var feature_totals = {};
+                    Ext.Array.each(records,function(r){
+                        Ext.Array.each(me.lb_tc_results,function(lbTc){
+                            if(Ext.Array.contains(lbTc.get('_ItemHierarchy'),r.get('ObjectID'))){
+                                grandTotal++;
+                                if(feature_totals[r.get('FormattedID')]){
+                                    feature_totals[r.get('FormattedID')].grandTotal++
+                                }else{
+                                    feature_totals[r.get('FormattedID')] = {
+                                        grandTotal:1,
+                                        totalPass:0,
+                                        totalFail:0,
+                                        totalNoRun:0,
+                                        totalOther:0                                       
+                                    }
+                                }                               
+                                if(me.lastVerdict[lbTc.get('ObjectID')] == "Pass"){
+                                    totalPass++;
+                                    feature_totals[r.get('FormattedID')].totalPass++
+                                }else if(me.lastVerdict[lbTc.get('ObjectID')] == "Fail"){
+                                    totalFail++;
+                                    feature_totals[r.get('FormattedID')].totalFail++
+                                }else if(me.lastVerdict[lbTc.get('ObjectID')] == null || me.lastVerdict[lbTc.get('ObjectID')] == ""){
+                                    totalNoRun++;
+                                    feature_totals[r.get('FormattedID')].totalNoRun++
+                                }else{
+                                    totalOther++;
+                                    feature_totals[r.get('FormattedID')].totalOther++
+                                }
+                            }
+                        });
+                    });
+                    console.log('feature_totals>>',feature_totals);
+
+                    var featurePassing = 0;
+                    var featureFailing = 0;
+                    var featureNoRun = 0;
+                    var featureNotCovered =0;
+
+                    _.each(feature_totals, function(value, key){
+                        console.log('Key, Value', key,value);
+                        if(value.grandTotal === value.totalPass) featurePassing++;
+                        if(value.totalFail > 0) featureFailing++;
+                        if(value.totalFail === 0 && value.totalPass === 0 && value.totalNoRun > 0) featureNoRun++;
+                        if(value.totalFail === 0 && value.totalPass === 0 && value.totalNoRun === 0 && value.totalOther) featureNotCovered++;
+                    });
+
+                    me.down('#totals_box').removeAll();
+
+                    // Ext.create('Ext.data.Store', {
+                    //     storeId:'totalStore',
+                    //     fields:['GrandTotal', 'TotalPass','TotalFail','TotalNoRun', 'TotalOther'],
+                    //     data:{'items':[
+                    //         { 'GrandTotal': grandTotal, 'TotalPass': totalPass, 'TotalFail': totalFail, 'TotalNoRun': totalNoRun, 'TotalOther': totalOther},
+                    //     ]},
+                    //     proxy: {
+                    //         type: 'memory',
+                    //         reader: {
+                    //             type: 'json',
+                    //             root: 'items'
+                    //         }
+                    //     }
+                    // });
+
+                    // me.down('#totals_box').add({
+                    //     xtype: 'grid',
+                    //     title: 'Test Case Coverage',
+                    //     header:{
+                    //         style: {
+                    //             background: 'lightBlue',
+                    //             'color': 'white',
+                    //             'font-weight': 'bold'
+                    //         }
+                    //     },
+                    //     store: Ext.data.StoreManager.lookup('totalStore'),
+                    //     columns: [
+                    //         { text: 'Total',  dataIndex: 'GrandTotal',flex:1},
+                    //         { text: 'Pass', dataIndex: 'TotalPass'},
+                    //         { text: 'Fail', dataIndex: 'TotalFail'},
+                    //         { text: 'No Run', dataIndex: 'TotalNoRun'},
+                    //         { text: 'Other', dataIndex: 'TotalOther'}
+                    //     ],
+                    //     width:600
+                    // });
+
+
+                    Ext.create('Ext.data.Store', {
+                        storeId:'totalFeatureStore',
+                        fields:['GrandTotal', 'FeaturePassing','FeatureFailing','FeatureNoRun', 'FeatureNotCovered'],
+                        data:{'items':[
+                            { 'GrandTotal': records.length, 'FeaturePassing': featurePassing, 'FeatureFailing': featureFailing, 'FeatureNoRun': featureNoRun, 'FeatureNotCovered': featureNotCovered},
+                        ]},
+                        proxy: {
+                            type: 'memory',
+                            reader: {
+                                type: 'json',
+                                root: 'items'
+                            }
+                        }
+                    });
+
+                    me.down('#totals_box').add({
+                        xtype: 'grid',
+                        title: 'Feature Coverage',
+                        header:{
+                            style: {
+                                background: 'lightBlue',
+                                'color': 'white',
+                                'font-weight': 'bold'
+                            }
+                        },
+                        store: Ext.data.StoreManager.lookup('totalFeatureStore'),
+                        columns: [
+                            { text: 'Total',  dataIndex: 'GrandTotal',flex:1},
+                            { text: 'Passing', dataIndex: 'FeaturePassing'},
+                            { text: 'Failing', dataIndex: 'FeatureFailing'},
+                            { text: 'No Result', dataIndex: 'FeatureNoRun'},
+                            { text: 'Not Covered', dataIndex: 'FeatureNotCovered'}
+                        ],
+                        width:600
+                    });
+
+                    me.setLoading(false);
+                },
+                scope:me
+            });
+
+ 
     },
 
     _updateAssociatedData: function(store, node, records, success){
@@ -373,7 +554,7 @@ Ext.define("CArABU.app.TSApp", {
 
     _getPlugins: function(){
         var me = this;
-       
+
         var plugins = [
         {
                 ptype: 'rallygridboardinlinefiltercontrol',
@@ -411,23 +592,73 @@ Ext.define("CArABU.app.TSApp", {
             stateId: me.getContext().getScopedStateId('field-picker')
         });
 
+        // plugins.push({
+        //     ptype: 'rallygridboardsharedviewcontrol',
+        //     sharedViewConfig: {
+        //         stateful: true,
+        //         stateId: me.getContext().getScopedStateId('feature-test-case-shared-view'),
+        //         defaultViews: _.map(this._getDefaultViews(), function(view) {
+        //             Ext.apply(view, {
+        //                 Value: Ext.JSON.encode(view.Value, true)
+        //             });
+        //             return view;
+        //         }, this),
+        //         enableUrlSharing: this.isFullPageApp !== false
+        //     }
+        // });
+
         return plugins;        
     },
+
+    // _getDefaultViews: function() {
+    //     return [
+    //         {
+    //             Name: 'Default View',
+    //             identifier: 1,
+    //             Value: {
+    //                 toggleState: 'grid',
+    //                 fields: this._getColumnCfgs()
+    //             }
+    //         }
+    //     ];
+    // },
 
     _getColumnCfgs: function(){
         var me = this;
 
         return  [{
             dataIndex: 'Name',
-            text: 'Name',
-            flex:1
-        },
-        {
-            dataIndex: 'ScheduleState',
-            text: 'Schedule State'
+            text: 'Name'
         }
+        // ,
+        // {
+        //     dataIndex:'Release',
+        //     text:'Release',
+        //     doSort    : function(direction) {
+        //                             me._sortStore({
+        //                                 store       : this.up('rallygrid').getStore(),
+        //                                 direction   : direction,
+        //                                 columnName  : 'Release',
+        //                                 subProperty : 'Name'
+        //                             });
+        //                         },
+
+        // }
         ].concat(me.getDerivedColumns());
     },
+
+    // _sortStore: function(config) {
+    //     console.log('Here here');
+    //     config.store.sort({
+    //         property  : config.columnName,
+    //         direction : config.direction,
+    //         sorterFn  : function(v1, v2){
+    //             v1 = (config.subProperty) ? v1.get(config.columnName) && v1.get(config.columnName)[config.subProperty] || '' : v1.get(config.columnName) || '';
+    //             v2 = (config.subProperty) ? v2.get(config.columnName) && v2.get(config.columnName)[config.subProperty] || '' : v2.get(config.columnName) || '';
+    //             return v1 > v2 ? 1 : v1 < v2 ? -1 : 0;
+    //         }
+    //     });
+    // },
 
     getDerivedColumns: function(){
         return [{
@@ -465,7 +696,7 @@ Ext.define("CArABU.app.TSApp", {
             text: 'User Story Coverage',
             xtype: 'templatecolumn',
             renderer: function(value, metaData, record){
-                var values = {'lightgreen':record.get('TotalCovered'),'white': (record.get('TotalStories') - record.get('TotalCovered'))}
+                var values = {'lightgreen':record.get('TotalCovered'),'lightgrey': (record.get('TotalStories') - record.get('TotalCovered'))}
 
                 if (values && Ext.isObject(values)){
                     var tpl = Ext.create('CArABU.technicalservices.ResultGraphTemplate');
@@ -482,7 +713,13 @@ Ext.define("CArABU.app.TSApp", {
             tpl: '<div style="text-align:center;">{TotalStories}</div>',
             text: 'Total User Stories',
             xtype: 'templatecolumn'
-        }];
+        }
+        // ,{
+        //     tpl: '<div style="text-align:center;"></div>',
+        //     text: '',
+        //     xtype: 'templatecolumn'
+        // }
+        ];
     },    
  
     _loadWsapiRecords: function(config){
@@ -543,6 +780,15 @@ Ext.define("CArABU.app.TSApp", {
 
     isExternal: function(){
         return typeof(this.getAppId()) == 'undefined';
-    }
+    },
+
+    showErrorNotification: function(msg){
+        this.logger.log('showErrorNotification', msg);
+        Rally.ui.notify.Notifier.showError({
+            message: msg
+        });
+    },    
+
+
 
 });
