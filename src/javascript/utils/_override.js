@@ -79,37 +79,53 @@ Ext.override(Rally.ui.grid.TreeGrid, {
     }
 });
 
-/* Opening all links in new window as per customer request. */
-Ext.override(Rally.nav.DetailLink, {
 
-        getLink: function(options) {
-            var data = options.record.isModel ? options.record.data : options.record;
-            var target =  Rally.util.Window.isInFrame() ? '_top' : '';
-            var hover = '';
+Ext.override(Rally.data.wsapi.ParentChildMapper, {
 
-            var href = Rally.nav.Manager.getDetailUrl(data, options);
+    constructor: function() {
+        this.parentChildTypeMap = {
+            hierarchicalrequirement: [
+                {typePath: 'defect', collectionName: 'Defects', parentField: 'Requirement'},
+                {typePath: 'testcase', collectionName: 'TestCases', parentField: 'WorkProduct'},
+                {typePath: 'hierarchicalrequirement', collectionName: 'Children', parentField: 'Parent'}
+            ],
+            defect: [
+                {typePath: 'testcase', collectionName: 'TestCases', parentField: 'WorkProduct'}
+            ],
+            defectsuite: [
+                {typePath: 'defect', collectionName: 'Defects', parentField: 'DefectSuites'},
+                {typePath: 'testcase', collectionName: 'TestCases', parentField: 'WorkProduct'}
+            ],
+            testset: [
+                {typePath: 'testcase', collectionName: 'TestCases', parentField: 'TestSets'}
+            ],
+            testcase: [
+                {typePath: 'defect', collectionName: 'Defects', parentField: 'TestCase'}
+            ],
+            attributedefinition: [
+                {typePath: 'allowedattributevalue', collectionName: 'AllowedValues', parentField: 'AttributeDefinition'}
+            ]
+        };
+    }
 
-            if(!href){
-                return options.text;
-            }
-
-            var showHover = options.showHover !== false && window.activateEl;
-            if(showHover){
-                hover = this._getHoverText(data._ref);
-            }
-
-            var oid = Rally.util.Ref.getOidFromRef(data._ref);
-
-            return this.template.apply({
-                href: href,
-                target: '_blank',
-                onclick: options.onclick,
-                text: options.text,
-                hover: hover,
-                tooltip: options.showTooltip !== false,
-                id: showHover? 'hov' + oid : ''
-            });
-
-        }
 
 });
+
+
+
+// Ext.override(Ext.data.TreeStore, {
+
+//     doSort: function(sorterFn) {
+//         var me = this;
+//         console.log(sorterFn,me.sorters.getRange());
+//         if (me.remoteSort) {
+//             //the load function will pick up the new sorters and request the sorted data from the proxy
+//             me.load();
+//         } else {
+//             me.tree.sort(sorterFn, true);
+//             me.fireEvent('datachanged', me);
+//             me.fireEvent('refresh', me);
+//         }
+//         me.fireEvent('sort', me, me.sorters.getRange());
+//     }
+// });
