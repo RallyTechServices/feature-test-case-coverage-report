@@ -217,7 +217,7 @@ Ext.define("CArABU.app.TSApp", {
         find["__At"] = "current";
 
         var snapshotStore = Ext.create('Rally.data.lookback.SnapshotStore', {
-            "fetch": [ "ObjectID","LastVerdict","_ItemHierarchy"],
+            "fetch": [ "ObjectID","FormattedID","Name","WorkProduct","LastVerdict","_ItemHierarchy","Method"],
             "find": find,
             "useHttpPost": true
             ,
@@ -253,7 +253,8 @@ Ext.define("CArABU.app.TSApp", {
 
         var find = {
                         "_TypeHierarchy": "HierarchicalRequirement",
-                        "_ItemHierarchy": { $in: piObjectIDs }
+                        "_ItemHierarchy": { $in: piObjectIDs },
+                        "DirectChildrenCount": 0
                     };
         find["__At"] = "current";
 
@@ -313,6 +314,11 @@ Ext.define("CArABU.app.TSApp", {
                   context: context,
                   modelNames: me.modelNames,
                   toggleState: 'grid',
+                  border: 1,
+                  style: {
+                      borderColor: 'lightblue',
+                      borderStyle: 'solid'
+                  },
                   // stateful: true,
                   // stateId: context.getScopedStateId('gridboard_state1'),      
                   plugins: me._getPlugins(),
@@ -330,28 +336,28 @@ Ext.define("CArABU.app.TSApp", {
                     enableRanking: false,
                     enableBulkEdit: false,
                     sortableColumns: true,
-                    folderSort:true,
-                    // ,
-                    // listeners:{
-                    //     sortchange: function(ct, column, direction, eOpts){
-                    //         console.log(ct, column, direction, eOpts);
-                    //             this.sorters = {
-                    //                 property: column.dataIndex,
-                    //                 direction: direction,
-                    //                 sorterFn  : function(v1, v2){
-                    //                     console.log("v1,v2>>",v1,v2)
-                    //                      v1 = v1.get('Release')['Name'] || '' ;
-                    //                      v2 = v2.get('Release')['Name'] || '' ;
-                    //                     return v1 > v2 ? 1 : v1 < v2 ? -1 : 0;
-                    //                 }                                    
-                    //             }                            
-                    //     }
-                    // }
+                    folderSort:true
+                    ,
+                    viewConfig: {
+                        xtype: 'rallytreeview',
+                        enableTextSelection: false,
+                        animate: false,
+                        loadMask: false,
+                        forceFit: true,
+                        plugins: [
+                            'rallytreeviewdragdrop',
+                            'rallyviewvisibilitylistener'
+                        ],
+                        listeners: {
+                            cellclick: me.showDrillDown,
+                            scope: me
+                        }
+                    }     
                   },
                     listeners: {
                         load: me._addTotals,
                         scope: me
-                    },                  
+                    },         
                   height: height,
                   width: width
               });
@@ -370,23 +376,34 @@ Ext.define("CArABU.app.TSApp", {
                 success: function(records){
 
 
-                    var totalPass = 0;
-                    var totalFail = 0;
-                    var totalNoRun = 0;
-                    var totalOther = 0;
-                    var grandTotal = 0;
-                    var feature_totals = {};
+                    var totalPass = {value:0,records:[]},
+                        totalFail = {value:0,records:[]},
+                        totalNoRun = {value:0,records:[]},
+                        totalOther = {value:0,records:[]},
+                        grandTotal = {value:0,records:[]},
+                        totalAutomated = 0,
+                        pctAutomated = 0,
+                        feature_totals = {};
+                    var record = {};
                     Ext.Array.each(records,function(r){
                         feature_totals[r.get('FormattedID')] = {
                             grandTotal:0,
                             totalPass:0,
                             totalFail:0,
                             totalNoRun:0,
-                            totalOther:0                                       
+                            totalOther:0,
+                            totalAutomated:0                                     
                         }
                         Ext.Array.each(me.lb_tc_results,function(lbTc){
                             if(Ext.Array.contains(lbTc.get('_ItemHierarchy'),r.get('ObjectID'))){
-                                grandTotal++;
+                                record = {
+                                    'ObjectID': lbTc.get('ObjectID'),
+                                    'FormattedID': lbTc.get('FormattedID'),
+                                    'Name': lbTc.get('Name'),
+                                    'Method': lbTc.get('Method')
+                                }
+                                grandTotal.value++;
+                                grandTotal.records.push(record);                                
                                 if(feature_totals[r.get('FormattedID')]){
                                     feature_totals[r.get('FormattedID')].grandTotal++
                                 }else{
@@ -395,37 +412,51 @@ Ext.define("CArABU.app.TSApp", {
                                         totalPass:0,
                                         totalFail:0,
                                         totalNoRun:0,
-                                        totalOther:0                                       
+                                        totalOther:0,
+                                        totalAutomated:0                                       
                                     }
-                                }                               
+                                }
+                                if(lbTc.get('Method') == "Automated"){
+                                    totalAutomated++;
+                                    feature_totals[r.get('FormattedID')].totalAutomated++;
+                                }                    
                                 if(me.lastVerdict[lbTc.get('ObjectID')] == "Pass"){
-                                    totalPass++;
-                                    feature_totals[r.get('FormattedID')].totalPass++
+                                    totalPass.value++;
+                                    totalPass.records.push(record);
+                                    feature_totals[r.get('FormattedID')].totalPass++;
                                 }else if(me.lastVerdict[lbTc.get('ObjectID')] == "Fail"){
-                                    totalFail++;
+                                    totalFail.value++;
+                                    totalFail.records.push(record);                                    
                                     feature_totals[r.get('FormattedID')].totalFail++
                                 }else if(me.lastVerdict[lbTc.get('ObjectID')] == null || me.lastVerdict[lbTc.get('ObjectID')] == ""){
-                                    totalNoRun++;
-                                    feature_totals[r.get('FormattedID')].totalNoRun++
+                                    totalNoRun.value++;
+                                    totalNoRun.records.push(record);                                        
+                                    feature_totals[r.get('FormattedID')].totalNoRun++;
                                 }else{
-                                    totalOther++;
-                                    feature_totals[r.get('FormattedID')].totalOther++
+                                    totalOther.value++;
+                                    totalOther.records.push(record);                                       
+                                    feature_totals[r.get('FormattedID')].totalOther++;
                                 }
                             }
                         });
                     });
+
+                    if(grandTotal.value > 0){
+                        pctAutomated = Ext.Number.toFixed((totalAutomated / grandTotal.value) * 100,2);
+                    }
+
                     console.log('feature_totals>>',feature_totals);
 
-                    var featurePassing = 0;
-                    var featureFailing = 0;
-                    var featureNoRun = 0;
-                    var featureNotCovered =0;
+                    var featurePassing = 0,
+                        featureFailing = 0,
+                        featureNoRun = 0,
+                        featureNotCovered = 0;
 
                     _.each(feature_totals, function(value, key){
                         console.log('Key, Value', key,value);
-                        if(value.grandTotal === value.totalPass) featurePassing++;
+                        if(value.grandTotal === value.totalPass && value.grandTotal > 0) featurePassing++;
                         if(value.totalFail > 0) featureFailing++;
-                        if(value.totalFail === 0 && value.totalPass === 0 && value.totalNoRun > 0) featureNoRun++;
+                        if(value.totalNoRun > 0) featureNoRun++;
                         if(value.totalFail === 0 && value.totalPass === 0 && value.totalNoRun === 0 && value.totalOther === 0) featureNotCovered++;
                     });
 
@@ -434,9 +465,9 @@ Ext.define("CArABU.app.TSApp", {
 
                     Ext.create('Ext.data.Store', {
                         storeId:'totalStore',
-                        fields:['GrandTotal', 'TotalPass','TotalFail','TotalNoRun', 'TotalOther'],
+                        fields:['GrandTotal','PctAutomated','TotalPass','TotalFail','TotalNoRun', 'TotalOther'],
                         data:{'items':[
-                            { 'GrandTotal': grandTotal, 'TotalPass': totalPass, 'TotalFail': totalFail, 'TotalNoRun': totalNoRun, 'TotalOther': totalOther},
+                            { 'GrandTotal': grandTotal, 'PctAutomated': pctAutomated,'TotalPass': totalPass, 'TotalFail': totalFail, 'TotalNoRun': totalNoRun, 'TotalOther': totalOther},
                         ]},
                         proxy: {
                             type: 'memory',
@@ -457,15 +488,48 @@ Ext.define("CArABU.app.TSApp", {
                                 'font-weight': 'bold'
                             }
                         },
+                        sortableColumns:false,
+                        enableColumnHide:false,
                         store: Ext.data.StoreManager.lookup('totalStore'),
                         columns: [
-                            { text: 'Total',  dataIndex: 'GrandTotal',flex:1},
-                            { text: 'Pass', dataIndex: 'TotalPass'},
-                            { text: 'Fail', dataIndex: 'TotalFail'},
-                            { text: 'No Run', dataIndex: 'TotalNoRun'},
-                            { text: 'Other', dataIndex: 'TotalOther'}
+                            { text: 'Total',  dataIndex: 'GrandTotal',flex:1,
+                                renderer: function(GrandTotal){
+                                    return GrandTotal.value > 0 ? '<a href="#">' + GrandTotal.value + '</a>' : 0;
+                                }
+                            },
+                            { text: '% Automated', dataIndex: 'PctAutomated', 
+                                renderer: function(value){
+                                    return value + ' %'
+                                }
+                            },
+                            { text: 'Pass', dataIndex: 'TotalPass',
+                                renderer: function(TotalPass){
+                                    return TotalPass.value > 0 ? '<a href="#">' + TotalPass.value + '</a>' : 0;
+                                }
+                            },
+                            { text: 'Fail', dataIndex: 'TotalFail',
+                                renderer: function(TotalFail){
+                                    return TotalFail.value > 0 ? '<a href="#">' + TotalFail.value + '</a>' : 0;
+                                }
+                            },
+                            { text: 'No Run', dataIndex: 'TotalNoRun',
+                                renderer: function(TotalNoRun){
+                                    return TotalNoRun.value > 0 ? '<a href="#">' + TotalNoRun.value + '</a>' : 0;
+                                }
+                            },
+                            { text: 'Other', dataIndex: 'TotalOther',
+                                renderer: function(TotalOther){
+                                    return TotalOther.value > 0 ? '<a href="#">' + TotalOther.value + '</a>' : 0;
+                                }
+                            }
                         ],
-                        width:600
+                        width:600,
+                        viewConfig: {
+                            listeners: {
+                                cellclick: this.showDrillDown,
+                                scope: me
+                            }
+                        }     
                     });
 
 
@@ -494,13 +558,15 @@ Ext.define("CArABU.app.TSApp", {
                                 'font-weight': 'bold'
                             }
                         },
+                        sortableColumns:false,
+                        enableColumnHide:false,
                         store: Ext.data.StoreManager.lookup('totalFeatureStore'),
                         columns: [
                             { text: 'Total Features',  dataIndex: 'GrandTotal',flex:1},
                             { text: 'Passing Features', dataIndex: 'FeaturePassing'},
                             { text: 'Failing Features', dataIndex: 'FeatureFailing'},
-                            { text: 'Features with no results', dataIndex: 'FeatureNoRun'},
-                            { text: 'Not Covered Features', dataIndex: 'FeatureNotCovered'}
+                            { text: 'Features with <br> no results', dataIndex: 'FeatureNoRun'},
+                            { text: 'Not Covered <br> Features', dataIndex: 'FeatureNotCovered'}
                         ],
                         width:600
                     });
@@ -516,39 +582,52 @@ Ext.define("CArABU.app.TSApp", {
     _updateAssociatedData: function(store, node, records, success){
         var me = this;
         me.suspendLayouts();
+        var record = {};
         Ext.Array.each(records,function(r){
 
-            var totalPass = 0;
-            var totalFail = 0;
-            var totalNoRun = 0;
-            var totalOther = 0;
-
-            var totalStories = 0;
-            var totalCovered = 0;
+            var totalPass = {value:0,records:[]},
+                totalFail = {value:0,records:[]},
+                totalNoRun = {value:0,records:[]},
+                totalOther = {value:0,records:[]},
+                totalStories = 0,
+                totalCovered = 0;
 
 
             Ext.Array.each(me.lb_tc_results,function(lbTc){
+                record = {
+                    'ObjectID': lbTc.get('ObjectID'),
+                    'FormattedID': lbTc.get('FormattedID'),
+                    'Name': lbTc.get('Name'),
+                    'Method': lbTc.get('Method')
+                }
                 if(Ext.Array.contains(lbTc.get('_ItemHierarchy'),r.get('ObjectID'))){
                     if(me.lastVerdict[lbTc.get('ObjectID')] == "Pass"){
-                        totalPass++;
+                        totalPass.records.push(record);
+                        totalPass.value++;
                     }else if(me.lastVerdict[lbTc.get('ObjectID')] == "Fail"){
-                        totalFail++
+                        totalFail.records.push(record);
+                        totalFail.value++;
                     }else if(me.lastVerdict[lbTc.get('ObjectID')] == null || me.lastVerdict[lbTc.get('ObjectID')] == ""){
-                        totalNoRun++
+                        totalNoRun.records.push(record);
+                        totalNoRun.value++;
                     }else{
-                        totalOther++
+                        totalOther.records.push(record);
+                        totalOther.value++;                        
                     }
                 }
             });
 
             Ext.Array.each(me.lb_us_results,function(lbUs){
+                // if(Ext.Array.contains(lbUs.get('_ItemHierarchy'),r.get('ObjectID')) && !(r.get('_type') == 'hierarchicalrequirement' && r.get('DirectChildrenCount') > 0)){
                 if(Ext.Array.contains(lbUs.get('_ItemHierarchy'),r.get('ObjectID'))){
-                    if(r.get('DirectChildrenCount') == 0){
-                        totalStories++;
-                        if(lbUs.get('TestCases') && lbUs.get('TestCases').length > 0) totalCovered++;
-                    }
+                    totalStories++;
+                    if(lbUs.get('TestCases') && lbUs.get('TestCases').length > 0) totalCovered++;
                 }
-            });            
+            });
+
+            // if(r.get('_type') == 'hierarchicalrequirement' && r.get('DirectChildrenCount') > 0 && totalCovered > 0){
+            //     totalCovered--;
+            // }
 
             r.set('Passing', totalPass);
             r.set('Failing', totalFail);
@@ -556,8 +635,6 @@ Ext.define("CArABU.app.TSApp", {
             r.set('Other', totalOther);
             r.set('TotalStories', totalStories);
             r.set('TotalCovered', totalCovered);
-
-
         });
         me.resumeLayouts();
     },
@@ -671,12 +748,13 @@ Ext.define("CArABU.app.TSApp", {
     // },
 
     getDerivedColumns: function(){
+        var me = this;
         return [{
             tpl: '<div style="text-align:center;"></div>',
             text: 'Result Graph',
             xtype: 'templatecolumn',
             renderer: function(value, metaData, record){
-                var values = {'lightgreen':record.get('Passing'),'red':record.get('Failing'),'yellow':record.get('NoRun'),'blue':record.get('Other')}
+                var values = {'lightgreen':record.get('Passing').value,'red':record.get('Failing').value,'yellow':record.get('NoRun').value,'blue':record.get('Other').value}
 
                 if (values && Ext.isObject(values)){
                     var tpl = Ext.create('CArABU.technicalservices.ResultGraphTemplate');
@@ -686,21 +764,34 @@ Ext.define("CArABU.app.TSApp", {
                 return '';
             }
         },{
-            tpl: '<div style="text-align:center;">{Passing}</div>',
+            tpl: '<div style="text-align:center;"><span style="color: green;">{Passing.value}</span></div>',
             text: 'Passing',
             xtype: 'templatecolumn'
+            ,
+            renderer: function(m,v,r){
+                return r.get('Passing').value > 0 ? '<a href="#">' + r.get('Passing').value + '</a>' : 0;
+            }
         },{
             tpl: '<div style="text-align:center;">{Failing}</div>',
             text: 'Failing',
-            xtype: 'templatecolumn'
+            xtype: 'templatecolumn',
+            renderer: function(m,v,r){
+                return r.get('Failing').value > 0 ? '<a href="#">' + r.get('Failing').value + '</a>' : 0;
+            }
         },{
             tpl: '<div style="text-align:center;">{NoRun}</div>',
-            text: 'No Run',
-            xtype: 'templatecolumn'
+            text: 'NoRun',
+            xtype: 'templatecolumn',
+            renderer: function(m,v,r){
+                return r.get('NoRun').value > 0 ? '<a href="#">' + r.get('NoRun').value + '</a>' : 0;
+            }
         },{
             tpl: '<div style="text-align:center;">{Other}</div>',
             text: 'Other',
-            xtype: 'templatecolumn'
+            xtype: 'templatecolumn',
+            renderer: function(m,v,r){
+                return r.get('Other').value > 0 ? '<a href="#">' + r.get('Other').value + '</a>' : 0;
+            }
         },{
             tpl: '<div style="text-align:center;"></div>',
             text: 'User Story Coverage',
@@ -732,6 +823,72 @@ Ext.define("CArABU.app.TSApp", {
         ];
     },    
  
+
+    showDrillDown: function(view, cell, cellIndex, record) {
+        console.log('view, cell, cellIndex, record',view, cell, cellIndex, record,view.panel.headerCt.getHeaderAtIndex(cellIndex).dataIndex);
+        var me = this;
+        var clickedDataIndex = view.panel.headerCt.getHeaderAtIndex(cellIndex).dataIndex || view.panel.headerCt.getHeaderAtIndex(cellIndex).text;
+        var allowedIndices = ['Passing','Failing','NoRun','Other','Total','GrandTotal','TotalPass','TotalFail','TotalOther','TotalNoRun']
+        if(!Ext.Array.contains(allowedIndices, clickedDataIndex)) return;
+
+        var records = record.get(clickedDataIndex).records;
+        // if(ruleValue.constructor != Array) return;
+
+        var store = Ext.create('Rally.data.custom.Store', {
+            data: records,
+            pageSize: 2000
+        });
+        
+        var title = 'Records for ' + clickedDataIndex || ""
+
+        
+        Ext.create('Rally.ui.dialog.Dialog', {
+            itemId    : 'detailPopup',
+            title     : title,
+            width     : Ext.getBody().getWidth()*0.4,
+            height    : Ext.getBody().getHeight()*0.4,
+            closable  : true,
+            layout    : 'border',
+            items     : [
+                        {
+                            xtype                : 'rallygrid',
+                            itemId               : 'popupGrid',
+                            region               : 'center',
+                            layout               : 'fit',
+                            sortableColumns      : true,
+                            showRowActionsColumn : false,
+                            showPagingToolbar    : false,
+                            columnCfgs           : this.getDrillDownColumns(title),
+                            store : store
+                        }
+                        ]
+        }).show();
+    },
+
+    getDrillDownColumns: function(title) {
+        var me = this;
+        return [
+            {
+                dataIndex : 'FormattedID',
+                text: "id",
+                renderer: function(m,v,r){
+                    var baseUrl = window.location.protocol + '//' + window.location.host + '/#/detail/testcase/' + r.get('ObjectID');
+                    console.log(baseUrl);
+                    return '<a href="' + baseUrl +  '" target="_top" >' + r.get('FormattedID') + '</a>';
+                }
+            },
+            {
+                dataIndex : 'Name',
+                text: "Name",
+                flex: 1
+            },
+            {
+                dataIndex : 'Method',
+                text: "Method",
+                flex: 1
+            }
+        ];
+    },
     _loadWsapiRecords: function(config){
         console.log('_loadWsapiRecords',config);
         var deferred = Ext.create('Deft.Deferred');
