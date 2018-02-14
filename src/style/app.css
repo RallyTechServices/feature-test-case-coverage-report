@@ -1,5 +1,9 @@
 .app {
 }
+.x-border-layout-ct {
+    background-color: white;
+}
+
 .tsinfolink {
     position:absolute;
     right:0px;
