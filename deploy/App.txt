@@ -3,13 +3,13 @@
 <head>
     <title>CATS-Feature Test Case Coverage Report-0.1</title>
     <!--  (c) 2017 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Tue Feb 13 2018 16:46:56 GMT-0800 (PST) -->
+    <!--  Build Date: Wed Feb 14 2018 16:20:10 GMT-0800 (PST) -->
 
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Feb 13 2018 16:46:56 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Wed Feb 14 2018 16:20:10 GMT-0800 (PST)";
         var ARTIFACT = "F425";
         var BUILDER  = "rajan08";
-        var CHECKSUM = 51566112937;
+        var CHECKSUM = 52614492940;
     </script>
 
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -680,6 +680,14 @@ Ext.define("CArABU.app.TSApp", {
 
         if(!me.down('#releaseCombo')) return;
         console.log('releases >',me.down('#releaseCombo').value);
+
+        var cb = me.down('#releaseCombo');
+        //console.log(cb);
+        if(cb.valueModels.length == 0){
+            Rally.ui.notify.Notifier.showError({ message: "Please select one or more releases" });
+            return;
+        }
+        
         var pi_object_ids = [];
 
 
@@ -1360,33 +1368,37 @@ Ext.define("CArABU.app.TSApp", {
                 return '';
             }
         },{
-            tpl: '<div style="text-align:center;"><span style="color: green;">{Passing.value}</span></div>',
+            tpl: '<div style="text-align:center;">{Passing}</div>',
             text: 'Passing',
             xtype: 'templatecolumn'
             ,
             renderer: function(m,v,r){
-                return r.get('Passing').value > 0 ? '<a href="#">' + r.get('Passing').value + '</a>' : 0;
+                var value = r.get('Passing').value > 0 ? r.get('Passing').value : 0;
+                return  '<div style="text-align:center;"><a href="#">' + value + '</a></div>';
             }
         },{
             tpl: '<div style="text-align:center;">{Failing}</div>',
             text: 'Failing',
             xtype: 'templatecolumn',
             renderer: function(m,v,r){
-                return r.get('Failing').value > 0 ? '<a href="#">' + r.get('Failing').value + '</a>' : 0;
+                var value = r.get('Failing').value > 0 ? r.get('Failing').value : 0;
+                return  '<div style="text-align:center;"><a href="#">' + value + '</a></div>';
             }
         },{
             tpl: '<div style="text-align:center;">{NoRun}</div>',
             text: 'NoRun',
             xtype: 'templatecolumn',
             renderer: function(m,v,r){
-                return r.get('NoRun').value > 0 ? '<a href="#">' + r.get('NoRun').value + '</a>' : 0;
+                var value = r.get('NoRun').value > 0 ? r.get('NoRun').value : 0;
+                return  '<div style="text-align:center;"><a href="#">' + value + '</a></div>';
             }
         },{
             tpl: '<div style="text-align:center;">{Other}</div>',
             text: 'Other',
             xtype: 'templatecolumn',
             renderer: function(m,v,r){
-                return r.get('Other').value > 0 ? '<a href="#">' + r.get('Other').value + '</a>' : 0;
+                var value = r.get('Other').value > 0 ? r.get('Other').value : 0;
+                return  '<div style="text-align:center;"><a href="#">' + value + '</a></div>';
             }
         },{
             tpl: '<div style="text-align:center;"></div>',
