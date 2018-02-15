@@ -84,6 +84,14 @@ Ext.define("CArABU.app.TSApp", {
 
         if(!me.down('#releaseCombo')) return;
         console.log('releases >',me.down('#releaseCombo').value);
+
+        var cb = me.down('#releaseCombo');
+        //console.log(cb);
+        if(cb.valueModels.length == 0){
+            Rally.ui.notify.Notifier.showError({ message: "Please select one or more releases" });
+            return;
+        }
+        
         var pi_object_ids = [];
 
 
@@ -764,33 +772,37 @@ Ext.define("CArABU.app.TSApp", {
                 return '';
             }
         },{
-            tpl: '<div style="text-align:center;"><span style="color: green;">{Passing.value}</span></div>',
+            tpl: '<div style="text-align:center;">{Passing}</div>',
             text: 'Passing',
             xtype: 'templatecolumn'
             ,
             renderer: function(m,v,r){
-                return r.get('Passing').value > 0 ? '<a href="#">' + r.get('Passing').value + '</a>' : 0;
+                var value = r.get('Passing').value > 0 ? r.get('Passing').value : 0;
+                return  '<div style="text-align:center;"><a href="#">' + value + '</a></div>';
             }
         },{
             tpl: '<div style="text-align:center;">{Failing}</div>',
             text: 'Failing',
             xtype: 'templatecolumn',
             renderer: function(m,v,r){
-                return r.get('Failing').value > 0 ? '<a href="#">' + r.get('Failing').value + '</a>' : 0;
+                var value = r.get('Failing').value > 0 ? r.get('Failing').value : 0;
+                return  '<div style="text-align:center;"><a href="#">' + value + '</a></div>';
             }
         },{
             tpl: '<div style="text-align:center;">{NoRun}</div>',
             text: 'NoRun',
             xtype: 'templatecolumn',
             renderer: function(m,v,r){
-                return r.get('NoRun').value > 0 ? '<a href="#">' + r.get('NoRun').value + '</a>' : 0;
+                var value = r.get('NoRun').value > 0 ? r.get('NoRun').value : 0;
+                return  '<div style="text-align:center;"><a href="#">' + value + '</a></div>';
             }
         },{
             tpl: '<div style="text-align:center;">{Other}</div>',
             text: 'Other',
             xtype: 'templatecolumn',
             renderer: function(m,v,r){
-                return r.get('Other').value > 0 ? '<a href="#">' + r.get('Other').value + '</a>' : 0;
+                var value = r.get('Other').value > 0 ? r.get('Other').value : 0;
+                return  '<div style="text-align:center;"><a href="#">' + value + '</a></div>';
             }
         },{
             tpl: '<div style="text-align:center;"></div>',
