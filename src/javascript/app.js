@@ -9,7 +9,8 @@ Ext.define("CArABU.app.TSApp", {
         {xtype:'container',itemId:'selector_box', layout:{type:'hbox'} , margin: '10 10 50 10'},
         {xtype:'container',itemId:'top_box',layout:{type:'hbox',align:'stretch'}, margin: '100 10 100 10',items: [
             {xtype:'container',itemId:'totals_f_box', margin: '0 10 0 0'},
-            {xtype:'container',itemId:'totals_box', margin: '0 0 0 10'}]},
+            {xtype:'container',itemId:'totals_box', margin: '0 0 0 10'},
+            {xtype:'container',itemId:'filter_box', margin: '0 0 0 10'}]},
         {xtype:'container',itemId:'display_box', margin: '200 10 10 10' }
     ],
     // items: [
@@ -40,7 +41,7 @@ Ext.define("CArABU.app.TSApp", {
                 name: 'releaseCombo',
                 itemId: 'releaseCombo',
                 stateful: true,
-                stateId: me.getContext().getScopedStateId('releaseCombo'),   
+                stateId: 'releaseCombo-feature-test-case',   
                 fieldLabel: 'Select Release:',
                 multiSelect: true,
                 margin: '10 10 10 10', 
@@ -458,18 +459,27 @@ Ext.define("CArABU.app.TSApp", {
                     var featurePassing = 0,
                         featureFailing = 0,
                         featureNoRun = 0,
-                        featureNotCovered = 0;
+                        featureNotCovered = 0
+                        passingFeatureIds = [];
 
                     _.each(feature_totals, function(value, key){
                         console.log('Key, Value', key,value);
-                        if(value.grandTotal === value.totalPass && value.grandTotal > 0) featurePassing++;
+                        if(value.grandTotal === value.totalPass && value.grandTotal > 0) {
+                            featurePassing++;
+                            passingFeatureIds.push(key);
+                        }
                         if(value.totalFail > 0) featureFailing++;
-                        if(value.totalNoRun > 0) featureNoRun++;
+                        if(value.totalNoRun > 0 && value.totalFail === 0 && value.totalPass === 0) featureNoRun++;
                         if(value.totalFail === 0 && value.totalPass === 0 && value.totalNoRun === 0 && value.totalOther === 0) featureNotCovered++;
                     });
 
+                    console.log(passingFeatureIds);
+
                     me.down('#totals_f_box').removeAll();
                     me.down('#totals_box').removeAll();
+                    me.down('#filter_box').removeAll();
+
+
 
                     Ext.create('Ext.data.Store', {
                         storeId:'totalStore',
@@ -505,27 +515,27 @@ Ext.define("CArABU.app.TSApp", {
                                     return GrandTotal.value > 0 ? '<a href="#">' + GrandTotal.value + '</a>' : 0;
                                 }
                             },
-                            { text: '% Automated', dataIndex: 'PctAutomated', 
+                            { text: '% Automated', dataIndex: 'PctAutomated', flex:1,
                                 renderer: function(value){
                                     return value + ' %'
                                 }
                             },
-                            { text: 'Pass', dataIndex: 'TotalPass',
+                            { text: 'Passing', dataIndex: 'TotalPass',flex:1,
                                 renderer: function(TotalPass){
                                     return TotalPass.value > 0 ? '<a href="#">' + TotalPass.value + '</a>' : 0;
                                 }
                             },
-                            { text: 'Fail', dataIndex: 'TotalFail',
+                            { text: 'Failing', dataIndex: 'TotalFail',flex:1,
                                 renderer: function(TotalFail){
                                     return TotalFail.value > 0 ? '<a href="#">' + TotalFail.value + '</a>' : 0;
                                 }
                             },
-                            { text: 'No Run', dataIndex: 'TotalNoRun',
+                            { text: 'No Run', dataIndex: 'TotalNoRun',flex:1,
                                 renderer: function(TotalNoRun){
                                     return TotalNoRun.value > 0 ? '<a href="#">' + TotalNoRun.value + '</a>' : 0;
                                 }
                             },
-                            { text: 'Other', dataIndex: 'TotalOther',
+                            { text: 'Other', dataIndex: 'TotalOther',flex:1,
                                 renderer: function(TotalOther){
                                     return TotalOther.value > 0 ? '<a href="#">' + TotalOther.value + '</a>' : 0;
                                 }
@@ -571,13 +581,26 @@ Ext.define("CArABU.app.TSApp", {
                         store: Ext.data.StoreManager.lookup('totalFeatureStore'),
                         columns: [
                             { text: 'Total Features',  dataIndex: 'GrandTotal',flex:1},
-                            { text: 'Passing Features', dataIndex: 'FeaturePassing'},
-                            { text: 'Failing Features', dataIndex: 'FeatureFailing'},
-                            { text: 'Features with <br> no results', dataIndex: 'FeatureNoRun'},
-                            { text: 'Not Covered <br> Features', dataIndex: 'FeatureNotCovered'}
+                            { text: 'Passing Features', dataIndex: 'FeaturePassing',flex:1},
+                            { text: 'Failing Features', dataIndex: 'FeatureFailing',flex:1},
+                            { text: 'Incomplete <br>Features', dataIndex: 'FeatureNoRun',flex:1},
+                            { text: 'Not Covered <br>Features', dataIndex: 'FeatureNotCovered',flex:1}
                         ],
-                        width:600
+                        width:500
                     });
+
+                    // me.down('#filter_box').add({
+                    //     xtype:'rallybutton',
+                    //     text: 'Hide Passing Features',
+                    //     listeners: {
+                    //         click: function(btn){
+                    //             var filter = Ext.create('Rally.data.wsapi.Filter', {property:'FormattedID',value:'F1'});                                
+                    //             console.log(me.down('#pigridboard'));
+                    //             me.down('#pigridboard').applyCustomFilter(filter);
+                    //         }
+                    //     },
+                    //     scope:me
+                    // })
 
                     me.setLoading(false);
                 },
@@ -629,7 +652,9 @@ Ext.define("CArABU.app.TSApp", {
                 // if(Ext.Array.contains(lbUs.get('_ItemHierarchy'),r.get('ObjectID')) && !(r.get('_type') == 'hierarchicalrequirement' && r.get('DirectChildrenCount') > 0)){
                 if(Ext.Array.contains(lbUs.get('_ItemHierarchy'),r.get('ObjectID'))){
                     totalStories++;
-                    if(lbUs.get('TestCases') && lbUs.get('TestCases').length > 0) totalCovered++;
+                    if(lbUs.get('TestCases') != "" && lbUs.get('TestCases') && lbUs.get('TestCases').length > 0) {
+                        totalCovered++;
+                    }
                 }
             });
 
@@ -774,35 +799,30 @@ Ext.define("CArABU.app.TSApp", {
         },{
             tpl: '<div style="text-align:center;">{Passing}</div>',
             text: 'Passing',
-            xtype: 'templatecolumn'
-            ,
+            xtype: 'templatecolumn',
             renderer: function(m,v,r){
-                var value = r.get('Passing').value > 0 ? r.get('Passing').value : 0;
-                return  '<div style="text-align:center;"><a href="#">' + value + '</a></div>';
+                return me.renderLink(r,'Passing');
             }
         },{
             tpl: '<div style="text-align:center;">{Failing}</div>',
             text: 'Failing',
             xtype: 'templatecolumn',
             renderer: function(m,v,r){
-                var value = r.get('Failing').value > 0 ? r.get('Failing').value : 0;
-                return  '<div style="text-align:center;"><a href="#">' + value + '</a></div>';
+                return me.renderLink(r,'Failing');
             }
         },{
             tpl: '<div style="text-align:center;">{NoRun}</div>',
             text: 'NoRun',
             xtype: 'templatecolumn',
             renderer: function(m,v,r){
-                var value = r.get('NoRun').value > 0 ? r.get('NoRun').value : 0;
-                return  '<div style="text-align:center;"><a href="#">' + value + '</a></div>';
+                return me.renderLink(r,'NoRun');
             }
         },{
             tpl: '<div style="text-align:center;">{Other}</div>',
             text: 'Other',
             xtype: 'templatecolumn',
             renderer: function(m,v,r){
-                var value = r.get('Other').value > 0 ? r.get('Other').value : 0;
-                return  '<div style="text-align:center;"><a href="#">' + value + '</a></div>';
+                return me.renderLink(r,'Other');
             }
         },{
             tpl: '<div style="text-align:center;"></div>',
@@ -827,14 +847,12 @@ Ext.define("CArABU.app.TSApp", {
             text: 'Total User Stories',
             xtype: 'templatecolumn'
         }
-        // ,{
-        //     tpl: '<div style="text-align:center;"></div>',
-        //     text: '',
-        //     xtype: 'templatecolumn'
-        // }
         ];
     },    
  
+    renderLink: function(r,index){
+        return r.get(index).value > 0 ? '<div style="text-align:center;"><a href="#">' + r.get(index).value + '</a></div>' : '<div style="text-align:center;">0</a></div>';
+    },
 
     showDrillDown: function(view, cell, cellIndex, record) {
         console.log('view, cell, cellIndex, record',view, cell, cellIndex, record,view.panel.headerCt.getHeaderAtIndex(cellIndex).dataIndex);
