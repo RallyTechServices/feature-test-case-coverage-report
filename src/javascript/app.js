@@ -84,7 +84,7 @@ Ext.define("CArABU.app.TSApp", {
 
 
         if(!me.down('#releaseCombo')) return;
-        console.log('releases >',me.down('#releaseCombo').value);
+       // console.log('releases >',me.down('#releaseCombo').value);
 
         var cb = me.down('#releaseCombo');
         //console.log(cb);
@@ -235,7 +235,7 @@ Ext.define("CArABU.app.TSApp", {
 
         snapshotStore.load({
             callback: function(records, operation) {
-                console.log('operation>>',operation);
+                //console.log('operation>>',operation);
                 if(operation.wasSuccessful()){
                     //deferred.resolve([piObjectIDs,records]);
                     deferred.resolve(records);
@@ -277,7 +277,7 @@ Ext.define("CArABU.app.TSApp", {
 
         snapshotStore.load({
             callback: function(records, operation) {
-                console.log('operation>>',operation);
+                //console.log('operation>>',operation);
                 if(operation.wasSuccessful()){
                     //deferred.resolve([piObjectIDs,records]);
                     deferred.resolve(records);
@@ -363,10 +363,10 @@ Ext.define("CArABU.app.TSApp", {
                         }
                     }     
                   },
-                    listeners: {
-                        load: me._addTotals,
-                        scope: me
-                    },         
+                  listeners: {
+                    load: me._addTotals,
+                    scope: me
+                  },         
                   height: height,
                   width: width
               });
@@ -378,7 +378,7 @@ Ext.define("CArABU.app.TSApp", {
    _addTotals:function(grid) {
         var me = this;
         // var filters = me.down('#pigridboard') && me.down('#pigridboard').gridConfig.store.filters.items[0];
-        var filters = grid && grid.gridConfig.store.filters.items[0];
+        var filters = grid && grid.gridConfig.store.filters.items;
         var allPi;
         me.setLoading('Loading totals...');
             me._getSelectedPIs(me.modelNames[0],filters).then({
@@ -463,13 +463,14 @@ Ext.define("CArABU.app.TSApp", {
                         passingFeatureIds = [];
 
                     _.each(feature_totals, function(value, key){
-                        console.log('Key, Value', key,value);
+                        //console.log('Key, Value', key,value);
                         if(value.grandTotal === value.totalPass && value.grandTotal > 0) {
                             featurePassing++;
                             passingFeatureIds.push(key);
                         }
                         if(value.totalFail > 0) featureFailing++;
-                        if(value.totalNoRun > 0 && value.totalFail === 0 && value.totalPass === 0) featureNoRun++;
+                        //The Feature has  test cases, and at least one test has not run and zero test cases have failed.
+                        if(value.grandTotal > 0 && value.totalNoRun > 0 && value.totalFail === 0) featureNoRun++;
                         if(value.totalFail === 0 && value.totalPass === 0 && value.totalNoRun === 0 && value.totalOther === 0) featureNotCovered++;
                     });
 
@@ -855,7 +856,7 @@ Ext.define("CArABU.app.TSApp", {
     },
 
     showDrillDown: function(view, cell, cellIndex, record) {
-        console.log('view, cell, cellIndex, record',view, cell, cellIndex, record,view.panel.headerCt.getHeaderAtIndex(cellIndex).dataIndex);
+        //console.log('view, cell, cellIndex, record',view, cell, cellIndex, record,view.panel.headerCt.getHeaderAtIndex(cellIndex).dataIndex);
         var me = this;
         var clickedDataIndex = view.panel.headerCt.getHeaderAtIndex(cellIndex).dataIndex || view.panel.headerCt.getHeaderAtIndex(cellIndex).text;
         var allowedIndices = ['Passing','Failing','NoRun','Other','Total','GrandTotal','TotalPass','TotalFail','TotalOther','TotalNoRun']
@@ -903,7 +904,7 @@ Ext.define("CArABU.app.TSApp", {
                 text: "id",
                 renderer: function(m,v,r){
                     var baseUrl = window.location.protocol + '//' + window.location.host + '/#/detail/testcase/' + r.get('ObjectID');
-                    console.log(baseUrl);
+                    //console.log(baseUrl);
                     return '<a href="' + baseUrl +  '" target="_top" >' + r.get('FormattedID') + '</a>';
                 }
             },
