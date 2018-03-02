@@ -10,7 +10,7 @@ Ext.define("CArABU.app.TSApp", {
         {xtype:'container',itemId:'top_box',layout:{type:'hbox',align:'stretch'}, margin: '100 10 100 10',items: [
             {xtype:'container',itemId:'totals_f_box', margin: '0 10 0 0'},
             {xtype:'container',itemId:'totals_box', margin: '0 0 0 10'},
-            {xtype:'container',itemId:'filter_box', margin: '0 0 0 10'}]},
+            {xtype:'container',itemId:'filter_box', margin: '0 0 0 10',layout:{type:'vbox',align:'center'}}]},
         {xtype:'container',itemId:'display_box', margin: '200 10 10 10' }
     ],
     // items: [
@@ -328,8 +328,6 @@ Ext.define("CArABU.app.TSApp", {
                       borderColor: 'lightblue',
                       borderStyle: 'solid'
                   },
-                  // stateful: true,
-                  // stateId: context.getScopedStateId('gridboard_state1'),      
                   plugins: me._getPlugins(),
                   gridConfig: {
                     store: store,
@@ -459,14 +457,14 @@ Ext.define("CArABU.app.TSApp", {
                     var featurePassing = 0,
                         featureFailing = 0,
                         featureNoRun = 0,
-                        featureNotCovered = 0
-                        passingFeatureIds = [];
+                        featureNotCovered = 0;
+                    me.passingFeatureFilters = [];
 
                     _.each(feature_totals, function(value, key){
                         //console.log('Key, Value', key,value);
                         if(value.grandTotal === value.totalPass && value.grandTotal > 0) {
                             featurePassing++;
-                            passingFeatureIds.push(key);
+                            me.passingFeatureFilters.push({property:'FormattedID',operator: '!=',value:key});
                         }
                         if(value.totalFail > 0) featureFailing++;
                         //The Feature has  test cases, and at least one test has not run and zero test cases have failed.
@@ -474,7 +472,7 @@ Ext.define("CArABU.app.TSApp", {
                         if(value.totalFail === 0 && value.totalPass === 0 && value.totalNoRun === 0 && value.totalOther === 0) featureNotCovered++;
                     });
 
-                    console.log(passingFeatureIds);
+                    console.log('passingFeatureFilters>>',me.passingFeatureFilters);
 
                     me.down('#totals_f_box').removeAll();
                     me.down('#totals_box').removeAll();
@@ -590,18 +588,16 @@ Ext.define("CArABU.app.TSApp", {
                         width:500
                     });
 
-                    // me.down('#filter_box').add({
-                    //     xtype:'rallybutton',
-                    //     text: 'Hide Passing Features',
-                    //     listeners: {
-                    //         click: function(btn){
-                    //             var filter = Ext.create('Rally.data.wsapi.Filter', {property:'FormattedID',value:'F1'});                                
-                    //             console.log(me.down('#pigridboard'));
-                    //             me.down('#pigridboard').applyCustomFilter(filter);
-                    //         }
-                    //     },
-                    //     scope:me
-                    // })
+                    me.down('#filter_box').add({
+                        xtype:'rallybutton',
+                        text: 'Hide Passing <br>Features',
+                        listeners: {
+                            click: function(btn){
+                                me._hidePassingFeatures();
+                            }
+                        },
+                        scope:me
+                    })
 
                     me.setLoading(false);
                 },
@@ -609,6 +605,21 @@ Ext.define("CArABU.app.TSApp", {
             });
 
  
+    },
+
+    _hidePassingFeatures: function(){
+        var me = this;
+        var filter = Rally.data.wsapi.Filter.and(me.passingFeatureFilters);
+                   
+        console.log(me.down('#pigridboard'),me.passingFeatureFilters);
+        var grid = me.down('#pigridboard')
+        var filters = grid && grid.gridConfig.store.filters.items;
+        filters.push(filter);
+            grid.applyCustomFilter(Ext.apply({
+                recordMetrics: true,
+                types: me.modelNames,
+                filters: _.compact(filters)                
+            }));
     },
 
     _updateAssociatedData: function(store, node, records, success){
@@ -750,36 +761,9 @@ Ext.define("CArABU.app.TSApp", {
         return  [{
             dataIndex: 'Name',
             text: 'Name'
-        }
-        // ,
-        // {
-        //     dataIndex:'Release',
-        //     text:'Release',
-        //     doSort    : function(direction) {
-        //                             me._sortStore({
-        //                                 store       : this.up('rallygrid').getStore(),
-        //                                 direction   : direction,
-        //                                 columnName  : 'Release',
-        //                                 subProperty : 'Name'
-        //                             });
-        //                         },
-
-        // }
-        ].concat(me.getDerivedColumns());
+        }].concat(me.getDerivedColumns());
     },
 
-    // _sortStore: function(config) {
-    //     console.log('Here here');
-    //     config.store.sort({
-    //         property  : config.columnName,
-    //         direction : config.direction,
-    //         sorterFn  : function(v1, v2){
-    //             v1 = (config.subProperty) ? v1.get(config.columnName) && v1.get(config.columnName)[config.subProperty] || '' : v1.get(config.columnName) || '';
-    //             v2 = (config.subProperty) ? v2.get(config.columnName) && v2.get(config.columnName)[config.subProperty] || '' : v2.get(config.columnName) || '';
-    //             return v1 > v2 ? 1 : v1 < v2 ? -1 : 0;
-    //         }
-    //     });
-    // },
 
     getDerivedColumns: function(){
         var me = this;

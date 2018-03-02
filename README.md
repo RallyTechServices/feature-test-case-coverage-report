@@ -1,8 +1,18 @@
 # Feature Test Case Coverage Report
-
 ## Summary/Description
 
-![screenshot](./images/screenshot.png "This is an example")
+The report below shows TestCase coverage for each Feature on selected releases.
+
+Feature Coverage Total: Shows the total number of features that has passing, failing, incomplete or no run test cases.
+
+TestCase coverage: Total number of test cases that are passing, failing, incomplete or no run.
+
+The numbers on the report with link drills down to a grid of associated test cases.
+
+
+![screenshot](./images/screenshot1.png "This is an example")
+
+![screenshot](./images/screenshot2.png "This is an example")
 
 ## Development Notes
 
