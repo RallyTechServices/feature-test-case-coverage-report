@@ -2,22 +2,18 @@ Ext.define("CArABU.app.TSApp", {
     extend: 'Rally.app.App',
     componentCls: 'app',
     logger: new CArABU.technicalservices.Logger(),
-    defaults: { margin: 10 },
-    layout: 'border',
+    //defaults: { margin: 10 },
+    //layout: 'border',
 
     items: [
-        {xtype:'container',itemId:'selector_box', layout:{type:'hbox'} , margin: '10 10 50 10'},
-        {xtype:'container',itemId:'top_box',layout:{type:'hbox',align:'stretch'}, margin: '100 10 100 10',items: [
-            {xtype:'container',itemId:'totals_f_box', margin: '0 10 0 0'},
-            {xtype:'container',itemId:'totals_box', margin: '0 0 0 10'},
-            {xtype:'container',itemId:'filter_box', margin: '0 0 0 10',layout:{type:'vbox',align:'center'}}]},
-        {xtype:'container',itemId:'display_box', margin: '200 10 10 10' }
+        { xtype:'container',itemId:'selector_box', layout:{type:'hbox'}}, //top, right, bottom, left
+        {xtype:'container',itemId:'top_box',layout:{type:'vbox'},items: [
+            {xtype:'container',itemId:'totals_f_box', layout:{type:'hbox'}, margin: 5},
+            {xtype:'container',itemId:'totals_box',layout:{type:'hbox'}, margin: 5}
+            ]},
+        {xtype:'container',itemId:'display_box'}
     ],
-    // items: [
-    //     {xtype:'container',itemId:'top_box',layout:{type:'hbox'},items: [{xtype:'container',itemId:'selector_box',layout:{type:'hbox'}, margin: '10 10 50 10'},
-    //         {xtype:'container',itemId:'totals_f_box', layout:{type:'hbox',align: 'right'}, margin: '10 10 50 10'}]},
-    //     {xtype:'container',itemId:'display_box', margin: '100 10 10 10' }
-    // ],
+
     integrationHeaders : {
         name : "CArABU.app.TSApp"
     },
@@ -25,11 +21,11 @@ Ext.define("CArABU.app.TSApp", {
     modelNames : ['PortfolioItem/Feature'],
     launch: function() {
         var me = this;
-        //this.setLoading("Loading stuff...");
-
         this.logger.setSaveForLater(this.getSetting('saveLog'));
 
         me._addSelector();
+        setTimeout(function(){ me.updateView(); }, 500);
+        
     },
 
     _addSelector: function(){
@@ -89,7 +85,7 @@ Ext.define("CArABU.app.TSApp", {
         var cb = me.down('#releaseCombo');
         //console.log(cb);
         if(cb.valueModels.length == 0){
-            Rally.ui.notify.Notifier.showError({ message: "Please select one or more releases" });
+            Rally.ui.notify.Notifier.showError({ message: "Please select one or more releases to display the report" });
             return;
         }
         
@@ -119,10 +115,6 @@ Ext.define("CArABU.app.TSApp", {
                         Ext.Array.each(results[0], function(tc){
                             tc_filter.push(tc.get('_ItemHierarchy')[tc.get('_ItemHierarchy').length - 2]);
                         });
-
-                        // Ext.Array.each(results[1], function(us){
-                        //     us_filter.push(tc.get('_ItemHierarchy')[tc.get('_ItemHierarchy').length - 1]);
-                        // });
 
                         me._getTCs(tc_filter).then({
                             success: function(records){
@@ -314,15 +306,15 @@ Ext.define("CArABU.app.TSApp", {
 
         console.log('Filter>>', r_filters && r_filters.toString());
         me.down('#display_box').removeAll();
-        console.log("heights and widhths",this.getHeight(),this.getWidth(),me.getHeight(),me.getWidth(),me.down('#display_box').getHeight(),me.down('#display_box').getWidth());
-        var height = me.down('#display_box').getHeight(),
-            width = me.down('#display_box').getWidth();
         me.down('#display_box').add({
                   itemId: 'pigridboard',
                   xtype: 'rallygridboard',
                   context: context,
                   modelNames: me.modelNames,
+                  // autoScroll: true,
                   toggleState: 'grid',
+                  // layout:'fit',
+                  //padding: 5,
                   border: 1,
                   style: {
                       borderColor: 'lightblue',
@@ -338,23 +330,23 @@ Ext.define("CArABU.app.TSApp", {
                     stateful: true,
                     stateId: context.getScopedStateId('gridboard_state'),                                         
                     columnCfgs: me._getColumnCfgs(),
-                    derivedColumns: me.getDerivedColumns(),
+                    derivedColumnCfgs: me.getDerivedColumns(),
                     shouldShowRowActionsColumn:false,
                     enableRanking: false,
                     enableBulkEdit: false,
                     sortableColumns: true,
-                    folderSort:true
-                    ,
+                    // autoScroll: true,
+                    // scroll : 'both',
                     viewConfig: {
                         xtype: 'rallytreeview',
                         enableTextSelection: false,
                         animate: false,
                         loadMask: false,
-                        forceFit: true,
-                        plugins: [
-                            'rallytreeviewdragdrop',
-                            'rallyviewvisibilitylistener'
-                        ],
+                        // forceFit: true,
+                        // plugins: [
+                        //     'rallytreeviewdragdrop',
+                        //     'rallyviewvisibilitylistener'
+                        // ],
                         listeners: {
                             cellclick: me.showDrillDown,
                             scope: me
@@ -363,10 +355,13 @@ Ext.define("CArABU.app.TSApp", {
                   },
                   listeners: {
                     load: me._addTotals,
+                    viewChange: me.updateView,
                     scope: me
-                  },         
-                  height: height,
-                  width: width
+                  }
+                  ,         
+                  height: 500
+                  ,
+                  width:1200
               });
 
         me.setLoading(false);
@@ -468,7 +463,8 @@ Ext.define("CArABU.app.TSApp", {
                         }
                         if(value.totalFail > 0) featureFailing++;
                         //The Feature has  test cases, and at least one test has not run and zero test cases have failed.
-                        if(value.grandTotal > 0 && value.totalNoRun > 0 && value.totalFail === 0) featureNoRun++;
+                        // When a feature has at least one count in the 'Other' category (inconclusive or blocked) and no failures it is considered Incomplete.
+                        if(value.grandTotal > 0 && value.totalFail === 0  && (value.totalNoRun > 0 || value.totalOther > 0)) featureNoRun++;
                         if(value.totalFail === 0 && value.totalPass === 0 && value.totalNoRun === 0 && value.totalOther === 0) featureNotCovered++;
                     });
 
@@ -476,9 +472,7 @@ Ext.define("CArABU.app.TSApp", {
 
                     me.down('#totals_f_box').removeAll();
                     me.down('#totals_box').removeAll();
-                    me.down('#filter_box').removeAll();
-
-
+                    //me.down('#filter_box').removeAll();
 
                     Ext.create('Ext.data.Store', {
                         storeId:'totalStore',
@@ -588,7 +582,8 @@ Ext.define("CArABU.app.TSApp", {
                         width:500
                     });
 
-                    me.down('#filter_box').add({
+                    me.down('#totals_f_box').add({
+                        margin: 5,
                         xtype:'rallybutton',
                         text: 'Hide Passing <br>Features',
                         listeners: {
@@ -724,6 +719,14 @@ Ext.define("CArABU.app.TSApp", {
             stateId: me.getContext().getScopedStateId('field-picker')
         });
 
+        plugins.push({
+                    ptype: 'rallygridboardsharedviewcontrol',
+                    stateful: true,
+                    stateId: me.getContext().getScopedStateId('feature-view'),
+                    stateEvents: ['select','beforedestroy'],
+                    margin: 5
+                });
+
         // plugins.push({
         //     ptype: 'rallygridboardsharedviewcontrol',
         //     sharedViewConfig: {
@@ -760,17 +763,20 @@ Ext.define("CArABU.app.TSApp", {
 
         return  [{
             dataIndex: 'Name',
-            text: 'Name'
+            text: 'Name',
+            flex: 1
         }].concat(me.getDerivedColumns());
     },
 
 
     getDerivedColumns: function(){
         var me = this;
-        return [{
+        return [
+        {
             tpl: '<div style="text-align:center;"></div>',
             text: 'Result Graph',
             xtype: 'templatecolumn',
+            //flex:1,
             renderer: function(value, metaData, record){
                 var values = {'lightgreen':record.get('Passing').value,'red':record.get('Failing').value,'yellow':record.get('NoRun').value,'blue':record.get('Other').value}
 
@@ -781,9 +787,11 @@ Ext.define("CArABU.app.TSApp", {
 
                 return '';
             }
-        },{
+        },
+        {
             tpl: '<div style="text-align:center;">{Passing}</div>',
             text: 'Passing',
+            //flex:1,
             xtype: 'templatecolumn',
             renderer: function(m,v,r){
                 return me.renderLink(r,'Passing');
@@ -791,6 +799,7 @@ Ext.define("CArABU.app.TSApp", {
         },{
             tpl: '<div style="text-align:center;">{Failing}</div>',
             text: 'Failing',
+            //flex:1,
             xtype: 'templatecolumn',
             renderer: function(m,v,r){
                 return me.renderLink(r,'Failing');
@@ -798,6 +807,7 @@ Ext.define("CArABU.app.TSApp", {
         },{
             tpl: '<div style="text-align:center;">{NoRun}</div>',
             text: 'NoRun',
+            //flex:1,
             xtype: 'templatecolumn',
             renderer: function(m,v,r){
                 return me.renderLink(r,'NoRun');
@@ -805,13 +815,16 @@ Ext.define("CArABU.app.TSApp", {
         },{
             tpl: '<div style="text-align:center;">{Other}</div>',
             text: 'Other',
+            //flex:1,
             xtype: 'templatecolumn',
             renderer: function(m,v,r){
                 return me.renderLink(r,'Other');
             }
-        },{
+        },
+        {
             tpl: '<div style="text-align:center;"></div>',
             text: 'User Story Coverage',
+            //flex:1,
             xtype: 'templatecolumn',
             renderer: function(value, metaData, record){
                 var values = {'lightgreen':record.get('TotalCovered'),'lightgrey': (record.get('TotalStories') - record.get('TotalCovered'))}
@@ -823,13 +836,16 @@ Ext.define("CArABU.app.TSApp", {
 
                 return '';
             }
-        },{
+        },
+        {
             tpl: '<div style="text-align:center;">{TotalCovered}</div>',
             text: 'User Stories Covered',
+            //flex:1,
             xtype: 'templatecolumn'
         },{
             tpl: '<div style="text-align:center;">{TotalStories}</div>',
             text: 'Total User Stories',
+            //flex:1,
             xtype: 'templatecolumn'
         }
         ];
