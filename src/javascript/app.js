@@ -2,8 +2,6 @@ Ext.define("CArABU.app.TSApp", {
     extend: 'Rally.app.App',
     componentCls: 'app',
     logger: new CArABU.technicalservices.Logger(),
-    //defaults: { margin: 10 },
-    //layout: 'border',
 
     items: [
         { xtype:'container',itemId:'selector_box', layout:{type:'hbox'}}, //top, right, bottom, left
@@ -16,6 +14,12 @@ Ext.define("CArABU.app.TSApp", {
 
     integrationHeaders : {
         name : "CArABU.app.TSApp"
+    },
+
+    config: {
+        defaultSettings: {
+            gridWidth: 1200
+        }
     },
 
     modelNames : ['PortfolioItem/Feature'],
@@ -361,7 +365,7 @@ Ext.define("CArABU.app.TSApp", {
                   ,         
                   height: 500
                   ,
-                  width:1200
+                  width:me.getSetting('gridWidth')
               });
 
         me.setLoading(false);
@@ -673,8 +677,6 @@ Ext.define("CArABU.app.TSApp", {
             r.set('Failing', totalFail);
             r.set('NoRun', totalNoRun);
             r.set('Other', totalOther);
-            r.set('TotalStories', totalStories);
-            r.set('TotalCovered', totalCovered);
         });
         me.resumeLayouts();
     },
@@ -944,7 +946,16 @@ Ext.define("CArABU.app.TSApp", {
 
     getSettingsFields: function() {
         var check_box_margins = '5 0 5 0';
-        return [{
+        return [
+        {
+            xtype: 'rallynumberfield',
+            name: 'gridWidth',
+            margin: check_box_margins,
+            fieldLabel: 'Grid width (in pixels)',
+            fieldWidth: 100,
+            width: 200
+        },
+        {
             name: 'saveLog',
             xtype: 'rallycheckboxfield',
             boxLabelAlign: 'after',

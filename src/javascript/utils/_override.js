@@ -220,8 +220,6 @@ Ext.override(Rally.data.wsapi.ParentChildMapper, {
             ]
         };
     }
-
-
 });
 
 
