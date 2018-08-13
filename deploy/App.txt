@@ -3,13 +3,13 @@
 <head>
     <title>CATS-Feature Test Case Coverage Report-0.1</title>
     <!--  (c) 2017 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Fri Jun 29 2018 14:52:00 GMT-0700 (PDT) -->
+    <!--  Build Date: Mon Aug 13 2018 13:35:59 GMT-0700 (PDT) -->
 
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Fri Jun 29 2018 14:52:00 GMT-0700 (PDT)";
+        var APP_BUILD_DATE = "Mon Aug 13 2018 13:35:59 GMT-0700 (PDT)";
         var ARTIFACT = "F425";
         var BUILDER  = "rajan08";
-        var CHECKSUM = 62652440659;
+        var CHECKSUM = 62933385179;
     </script>
 
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -632,8 +632,6 @@ Ext.override(Rally.data.wsapi.ParentChildMapper, {
             ]
         };
     }
-
-
 });
 
 
@@ -711,8 +709,6 @@ Ext.define("CArABU.app.TSApp", {
     extend: 'Rally.app.App',
     componentCls: 'app',
     logger: new CArABU.technicalservices.Logger(),
-    //defaults: { margin: 10 },
-    //layout: 'border',
 
     items: [
         { xtype:'container',itemId:'selector_box', layout:{type:'hbox'}}, //top, right, bottom, left
@@ -725,6 +721,12 @@ Ext.define("CArABU.app.TSApp", {
 
     integrationHeaders : {
         name : "CArABU.app.TSApp"
+    },
+
+    config: {
+        defaultSettings: {
+            gridWidth: 1200
+        }
     },
 
     modelNames : ['PortfolioItem/Feature'],
@@ -1070,7 +1072,7 @@ Ext.define("CArABU.app.TSApp", {
                   ,         
                   height: 500
                   ,
-                  width:1200
+                  width:me.getSetting('gridWidth')
               });
 
         me.setLoading(false);
@@ -1382,8 +1384,6 @@ Ext.define("CArABU.app.TSApp", {
             r.set('Failing', totalFail);
             r.set('NoRun', totalNoRun);
             r.set('Other', totalOther);
-            r.set('TotalStories', totalStories);
-            r.set('TotalCovered', totalCovered);
         });
         me.resumeLayouts();
     },
@@ -1653,7 +1653,16 @@ Ext.define("CArABU.app.TSApp", {
 
     getSettingsFields: function() {
         var check_box_margins = '5 0 5 0';
-        return [{
+        return [
+        {
+            xtype: 'rallynumberfield',
+            name: 'gridWidth',
+            margin: check_box_margins,
+            fieldLabel: 'Grid width (in pixels)',
+            fieldWidth: 100,
+            width: 200
+        },
+        {
             name: 'saveLog',
             xtype: 'rallycheckboxfield',
             boxLabelAlign: 'after',
