@@ -1,15 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>CATS-Feature Test Case Coverage Report-0.1</title>
+    <title>CATS-Feature Test Case Coverage Report-1.0.1</title>
     <!--  (c) 2017 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Mon Aug 13 2018 13:35:59 GMT-0700 (PDT) -->
+    <!--  Build Date: Wed Dec 12 2018 21:43:39 GMT+0000 (UTC) -->
 
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Mon Aug 13 2018 13:35:59 GMT-0700 (PDT)";
+        var APP_BUILD_DATE = "Wed Dec 12 2018 21:43:39 GMT+0000 (UTC)";
         var ARTIFACT = "F425";
-        var BUILDER  = "rajan08";
-        var CHECKSUM = 62933385179;
+        var BUILDER  = "ec2-user";
+        var CHECKSUM = 63179581820;
     </script>
 
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -1384,6 +1384,8 @@ Ext.define("CArABU.app.TSApp", {
             r.set('Failing', totalFail);
             r.set('NoRun', totalNoRun);
             r.set('Other', totalOther);
+            r.set('TotalStories', totalStories);
+            r.set('TotalCovered', totalCovered);
         });
         me.resumeLayouts();
     },

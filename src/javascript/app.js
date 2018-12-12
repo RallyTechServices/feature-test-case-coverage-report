@@ -677,6 +677,8 @@ Ext.define("CArABU.app.TSApp", {
             r.set('Failing', totalFail);
             r.set('NoRun', totalNoRun);
             r.set('Other', totalOther);
+            r.set('TotalStories', totalStories);
+            r.set('TotalCovered', totalCovered);
         });
         me.resumeLayouts();
     },
