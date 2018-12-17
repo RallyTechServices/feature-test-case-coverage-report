@@ -1,4 +1,697 @@
-Ext.define("CArABU.app.TSApp", {
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Feature Test Case Coverage Report</title>
+
+    <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
+
+    <script type="text/javascript">
+        Rally.onReady(function () {
+                /**
+ * A link that pops up a version dialog box
+ */
+
+Ext.define('Rally.technicalservices.InfoLink',{
+    extend: 'Rally.ui.dialog.Dialog',
+    alias: 'widget.tsinfolink',
+
+    /**
+     * @cfg {String} informationHtml
+     * Additional text to be displayed on the popup dialog (for exmaple,
+     * to add a description of the app's use or functionality)
+     */
+    informationHtml: null,
+
+    /**
+     *
+     * cfg {String} title
+     * The title for the dialog box
+     */
+    title: "Build Information",
+
+    defaults: { padding: 5, margin: 5 },
+
+    closable: true,
+
+    draggable: true,
+
+    autoShow: true,
+
+    width: 350,
+
+    informationalConfig: null,
+
+    showLog: false,
+    logger: null,
+
+    items: [
+        {xtype:'container', itemId:'information' },
+        {xtype:'container', itemId:'button_box'}
+    ],
+
+    initComponent: function() {
+        var id = Ext.id(this);
+        this.title =  "<span class='icon-help'> </span>" + this.title;
+        this.callParent(arguments);
+    },
+
+    _generateChecksum: function(string){
+        var chk = 0x12345678,
+            i;
+        string = string.replace(/var CHECKSUM = .*;/,"");
+        string = string.replace(/var BUILDER  = .*;/,"");
+        string = string.replace(/\s/g,"");  //Remove all whitespace from the string.
+
+        for (i = 0; i < string.length; i++) {
+            chk += (string.charCodeAt(i) * i);
+        }
+
+        return chk;
+    },
+
+    _checkChecksum: function(container) {
+        var deferred = Ext.create('Deft.Deferred');
+        var me = this;
+
+        Ext.Ajax.request({
+            url: document.URL,
+            params: {
+                id: 1
+            },
+            success: function (response) {
+                text = response.responseText;
+                if ( CHECKSUM ) {
+                    var stored_checksum = me._generateChecksum(text);
+                    if ( CHECKSUM !== stored_checksum ) {
+                        deferred.resolve(false);
+                        return;
+                    }
+                }
+                deferred.resolve(true);
+            }
+        });
+
+        return deferred.promise;
+    },
+
+    _addToContainer: function(container){
+        var config = Ext.apply({
+            xtype:'container',
+            height: 200,
+            overflowY: true
+        }, this.informationalConfig);
+
+        container.add(config);
+    },
+
+    afterRender: function() {
+        var app = Rally.getApp();
+
+        if ( !Ext.isEmpty( this.informationalConfig ) ) {
+            var container = this.down('#information');
+            this._addToContainer(container);
+        }
+
+        if ( this.showLog && this.logger ) {
+            this.down('#button_box').add({
+                xtype:'rallybutton',
+                text:'Show Log',
+                listeners: {
+                    scope: this,
+                    click: function() {
+                        this.logger.displayLog();
+                    }
+                }
+            });
+        }
+
+        if (! app.isExternal() ) {
+            this._checkChecksum(app).then({
+                scope: this,
+                success: function(result){
+                    if ( !result ) {
+                        this.addDocked({
+                            xtype:'container',
+                            cls: 'build-info',
+                            dock: 'bottom',
+                            padding: 2,
+                            html:'<span class="icon-warning"> </span>Checksums do not match'
+                        });
+                    }
+                },
+                failure: function(msg){
+                    console.log("oops:",msg);
+                }
+            });
+        } else {
+            this.addDocked({
+                xtype:'container',
+                cls: 'build-info',
+                padding: 2,
+                dock: 'bottom',
+                html:'... Running externally'
+            });
+        }
+        this.callParent(arguments);
+    },
+
+    beforeRender: function() {
+        var me = this;
+        this.callParent(arguments);
+
+        if (this.informationHtml) {
+            this.addDocked({
+                xtype: 'component',
+                componentCls: 'intro-panel',
+                padding: 2,
+                html: this.informationHtml,
+                dock: 'bottom'
+            });
+        }
+
+        this.addDocked({
+            xtype:'container',
+            cls: 'build-info',
+            padding: 2,
+            dock:'bottom',
+            html:"This app was created by the CA AC Technical Services Team."
+        });
+
+        if ( APP_BUILD_DATE ) {
+            var build_html = Ext.String.format("Built on: {0} <br/>Built by: {1}",
+                APP_BUILD_DATE,
+                BUILDER);
+
+            if ( ARTIFACT ) {
+                build_html = build_html + "<br/>Source artifact: " + ARTIFACT;
+            }
+
+            this.addDocked({
+                xtype:'container',
+                cls: 'build-info',
+                padding: 2,
+                dock: 'top',
+                html: build_html
+            });
+        }
+    }
+});
+
+                /*
+ * originally written for when we supported older versions of IE that wouldn't
+ * deal with console.log.
+ *
+ * Now allows for saving log.
+ */
+Ext.define('CArABU.technicalservices.Logger',{
+
+    saveForLater: false,
+    saveLines: 100,
+    logArray: [],
+
+    constructor: function(config){
+        Ext.apply(this,config);
+    },
+
+    setSaveForLater: function(saveme){
+        this.saveForLater = saveme;
+    },
+
+    log: function(args){
+        var timestamp = "[ " + Ext.util.Format.date(new Date(), "Y-m-d H:i:s.u") + " ]";
+
+        var output_args = [];
+        output_args = Ext.Array.push(output_args,[timestamp]);
+        output_args = Ext.Array.push(output_args, Ext.Array.slice(arguments,0));
+
+        if ( this.saveForLater ) {
+            if ( !this.logArray) {
+                this.logArray = [];
+            }
+            this.logArray.push(output_args.join(' '));
+
+            if ( this.logArray.length > this.saveLines ) {
+                this.logArray.shift();
+            }
+        }
+
+        window.console && console.log.apply(console,output_args);
+    },
+
+    getLogText: function() {
+        if ( ! this.logArray || this.logArray.length === 0 ) { return "-- no log --"; }
+        return this.logArray.join('<br/>');
+    } ,
+
+    displayLog: function() {
+        var text = this.getLogText();
+
+        this.popup = Ext.create('Rally.ui.dialog.Dialog', {
+            width      : Ext.getBody().getWidth() - 20,
+            height     : Ext.getBody().getHeight() - 20,
+            closable   : true,
+            title      : 'Log',
+            autoShow   : true,
+            layout     : 'border',
+            defaults   : {
+                layout : 'fit',
+                width  : '50%',
+                border : false
+            },
+            items: [{
+                region : 'center',
+                xtype: 'container',
+                html: text,
+                autoScroll: true
+            }]
+        });
+    }
+});
+
+                Ext.define('TSUtilities', {
+
+    singleton: true,
+
+    loadWsapiRecords: function(config){
+        var deferred = Ext.create('Deft.Deferred');
+        var default_config = {
+            model: 'Defect',
+            fetch: ['ObjectID']
+        };
+        Ext.create('Rally.data.wsapi.Store', Ext.Object.merge(default_config,config)).load({
+            callback : function(records, operation, successful) {
+                if (successful){
+                    deferred.resolve(records);
+                } else {
+                    console.error("Failed: ", operation);
+                    deferred.reject('Problem loading: ' + operation.error.errors.join('. '));
+                }
+            }
+        });
+        return deferred.promise;
+    },
+
+    loadAStoreWithAPromise: function(model_name, model_fields){
+        var deferred = Ext.create('Deft.Deferred');
+
+        Ext.create('Rally.data.wsapi.Store', {
+            model: model_name,
+            fetch: model_fields
+        }).load({
+            callback : function(records, operation, successful) {
+                if (successful){
+                    deferred.resolve(this);
+                } else {
+                    console.error("Failed: ", operation);
+                    deferred.reject('Problem loading: ' + operation.error.errors.join('. '));
+                }
+            }
+        });
+        return deferred.promise;
+    }
+});
+
+                Ext.define('CArABU.technicalservices.chunk.Store',{
+
+    MAX_CHUNK_SIZE: 50,
+    logger: new CArABU.technicalservices.Logger(),
+
+    constructor: function(config) {
+        this.chunkProperty = config.chunkProperty;
+        this.chunkValue = config.chunkValue;
+
+        this.storeConfig = config.storeConfig || {};
+        this.storeType = config.storeType || 'Rally.data.wsapi.Store';
+
+    },
+    load: function(){
+        var deferred = Ext.create('Deft.Deferred');
+
+        var promises = [],
+            chunkArray = this.chunkValue,
+            config = this.storeConfig;
+
+        for (var i=0; i < chunkArray.length; i = i+this.MAX_CHUNK_SIZE){
+            var chunk = Ext.Array.slice(chunkArray, i, i + this.MAX_CHUNK_SIZE);
+            promises.push(this._fetchChunk(chunk, config));
+        }
+
+        Deft.Promise.all(promises).then({
+            success: function(results){
+                var records = _.flatten(results);
+                this.logger.log('load SUCCESS results', results,records);
+                deferred.resolve(records);
+            },
+            failure: function(msg){
+                this.logger.log('load FAILURE', chunkArray, msg);
+                deferred.reject(msg);
+            },
+            scope: this
+        });
+
+
+        return deferred;
+    },
+
+    _fetchChunk: function(objectIDs, config){
+        this.logger.log('chunk.Store._fetchChunk',objectIDs, config);
+        var deferred = Ext.create('Deft.Deferred');
+
+        var chunkProperty = this.chunkProperty,
+            filters = _.map(objectIDs, function(o){ return {
+                property: chunkProperty,
+                value: o
+            }
+        });
+        filters = Rally.data.wsapi.Filter.or(filters);
+
+
+        if (config.filters){
+            if (Ext.isArray(config.filters)){
+                config.filters  = Rally.data.wsapi.Filter.and(config.filters);
+            }
+            filters = filters.and(config.filters);
+        }
+        this.logger.log('chunk.Store._fetchChunk',filters.toString());
+
+        var fetch = config.fetch || true,
+            model = config.model || 'HierarchicalRequirement';
+
+        Ext.create(this.storeType,{
+            fetch: fetch,
+            filters: filters,
+            model: model,
+            context: {project: null}
+        }).load({
+            callback: function(records, operation, success){
+                if (success){
+                    deferred.resolve(records);
+                } else {
+                    var msg = "Failure loading records for objectIDs: " + objectIDs.join(', ') + ":  " + operation.error.errors.join(',');
+                    deferred.resolve(msg);
+                }
+            }
+        });
+        return deferred;
+    }
+
+});
+                /**
+ * This override fixes a bug in the SharedViewComboBox which prevents a newly created
+ * view from appearing in the view picker until after an app reload
+ */
+Ext.override(Rally.ui.gridboard.SharedViewComboBox, {
+    _isViewPreference: function(record) {
+        return record.self.typePath === 'preference' &&
+            record.get('Type') === 'View' &&
+            // This is fix. Must use '==' not '===' for this to return true
+            record.get('AppId') == this.getContext().getAppId();
+    }
+})
+
+
+Ext.override(Rally.data.wsapi.TreeStore,{
+    _decorateModels: function() {
+        var models = this.model;
+
+        if (_.isFunction(models.getArtifactComponentModels)) {
+            models = models.getArtifactComponentModels();
+        }
+
+        Ext.Array.each(models, function(m){
+                m.addField({name: 'Passing', type: 'auto',  defaultValue: 0});
+                m.addField({name: 'Failing', type: 'auto', defaultValue: 0});
+                m.addField({name: 'NoRun', type: 'auto',  defaultValue: 0});
+                m.addField({name: 'Other', type: 'auto',  defaultValue: 0});
+                m.addField({name: 'TotalStories', type: 'auto',  defaultValue: 0});
+                m.addField({name: 'TotalCovered', type: 'auto',  defaultValue: 0});                
+        });
+
+        _.each(Ext.Array.from(models), Rally.ui.grid.data.NodeInterface.decorate, Rally.ui.grid.data.NodeInterface);
+    }
+});
+
+// Ext.override(Rally.ui.renderer.template.ScheduleStateTemplate, {
+//     _getSymbolState: function(recordData, state) {
+//         var symbolState;
+//         if (recordData.ScheduleStatePrefix) {
+//             //
+//             // if (!recordData.isDirty || this._isCreate(recordData)) {
+//             //      symbolState = recordData.ScheduleStatePrefix;
+//             // }  else {
+//             //     symbolState = '';
+//             // }
+//             // overriding this as the record gets dirty after adding the task estimate to UserStory and PortfolioItems
+            
+//             symbolState = recordData.ScheduleStatePrefix;
+            
+//         } else {
+//             symbolState = state === 'In-Progress' ? 'P' : state.charAt(0);
+//         }
+//         return symbolState;
+//     }
+// });
+
+// Ext.override(Rally.ui.grid.TreeGrid, {
+//     _mergeColumnConfigs: function(newColumns, oldColumns) {
+
+//         var mergedColumns= _.map(newColumns, function(newColumn) {
+//             var oldColumn = _.find(oldColumns, {dataIndex: this._getColumnName(newColumn)});
+//             if (oldColumn) {
+//                 return this._getColumnConfigFromColumn(oldColumn);
+//             }
+
+//             return newColumn;
+//         }, this);
+//         mergedColumns = mergedColumns.concat(this.config.derivedColumns);
+//         return mergedColumns;
+//     },
+//     _restoreColumnOrder: function(columnConfigs) {
+
+//         var currentColumns = this._getColumnConfigsBasedOnCurrentOrder(columnConfigs);
+//         var addedColumns = _.filter(columnConfigs, function(config) {
+//             return !_.find(currentColumns, {dataIndex: config.dataIndex}) || Ext.isString(config);
+//         });
+
+//         return currentColumns.concat(addedColumns);
+//     },
+//     _applyStatefulColumns: function(columns) {
+//         if (this.alwaysShowDefaultColumns) {
+//             _.each(this.columnCfgs, function(columnCfg) {
+//                 if (!_.any(columns, {dataIndex: this._getColumnName(columnCfg)})) {
+//                     columns.push(columnCfg);
+//                 }
+//             }, this);
+//         }
+//         if (this.config && this.config.derivedColumns){
+//             this.columnCfgs = columns.concat(this.config.derivedColumns);
+//         } else {
+//             this.columnCfgs = columns;
+//         }
+//     }
+// });
+
+
+Ext.override(Rally.ui.grid.TreeGrid, {
+    _mergeColumnConfigs: function(newColumns, oldColumns) {
+
+        var mergedColumns = _.map(newColumns, function(newColumn) {
+            var oldColumn = _.find(oldColumns, { dataIndex: this._getColumnName(newColumn) });
+            if (oldColumn) {
+                return this._getColumnConfigFromColumn(oldColumn);
+            }
+
+            return newColumn;
+        }, this);
+        if (this.config && this.config.derivedColumnCfgs) {
+            mergedColumns = mergedColumns.concat(this.config.derivedColumnCfgs);
+        }
+        return mergedColumns;
+    },
+
+    _getColumnConfigsBasedOnCurrentOrder: function(columnConfigs) {
+        var cols = _(this.headerCt.items.getRange()).map(function(column) {
+            //override:  Added additional search for column.text
+            return _.contains(columnConfigs, column.dataIndex) ? column.dataIndex : _.find(columnConfigs, { xtype: column.xtype, text: column.text });
+        }).compact().value();
+
+        return cols;
+    },
+
+    _restoreColumnOrder: function(columnConfigs) {
+
+        var currentColumns = this._getColumnConfigsBasedOnCurrentOrder(columnConfigs);
+        var addedColumns = _.filter(columnConfigs, function(config) {
+            return !_.find(currentColumns, { dataIndex: config.dataIndex }) || Ext.isString(config);
+        });
+
+        return currentColumns.concat(addedColumns);
+    },
+
+    _applyStatefulColumns: function(columns) {
+        // TODO (tj) test default columns
+        if (this.alwaysShowDefaultColumns) {
+            _.each(this.columnCfgs, function(columnCfg) {
+                if (!_.any(columns, { dataIndex: this._getColumnName(columnCfg) })) {
+                    columns.push(columnCfg);
+                }
+            }, this);
+        }
+
+        if (this.config && this.config.derivedColumnCfgs) {
+            // Merge the derived column config with the stateful column if the dataIndex is the same,
+            // Otherwise add the derived columns if they aren't present.
+            //this.columnCfgs = columns.concat(this.config.derivedColumnCfgs);
+            _.each(this.config.derivedColumnCfgs, function(derivedColumnCfg) {
+                // Search by dataIndex or text
+                var columnName = this._getColumnName(derivedColumnCfg);
+                var columnState = _.find(columns, function(value) {
+                    return (value.dataIndex === columnName || value.text === columnName);
+                });
+                if (columnState) {
+                    // merge them (add renderer)
+                    _.merge(columnState, derivedColumnCfg);
+                }
+                else {
+                    // insert the derived column at the end
+                    columns.push(derivedColumnCfg);
+                }
+            }, this);
+        }
+
+        this.columnCfgs = columns;
+    },
+
+    // derived columns likely don't use Rally.data.wsapi.Field, and don't have getUUID.
+    // This override tests for getUUID function BEFORE calling it
+    _getPersistableColumnConfig: function(column) {
+        var columnConfig = this._getColumnConfigFromColumn(column),
+            field = this._getModelField(columnConfig.dataIndex);
+        if (field && field.getUUID) {
+            columnConfig.dataIndex = field.getUUID();
+        }
+        return columnConfig;
+    },
+
+    /**
+     * Override to support template columns that don't use a dataIndex
+     */
+    _getColumnName: function(column) {
+        var result = '';
+        if (_.isString(column)) {
+            result = column;
+        }
+        else if (column && column.dataIndex) {
+            result = column.dataIndex;
+        }
+        else if (column && column.text) {
+            result = column.text;
+        }
+        return result;
+    },
+});
+
+Ext.override(Rally.data.wsapi.ParentChildMapper, {
+
+    constructor: function() {
+        this.parentChildTypeMap = {
+            hierarchicalrequirement: [
+                {typePath: 'defect', collectionName: 'Defects', parentField: 'Requirement'},
+                {typePath: 'testcase', collectionName: 'TestCases', parentField: 'WorkProduct'},
+                {typePath: 'hierarchicalrequirement', collectionName: 'Children', parentField: 'Parent'}
+            ],
+            defect: [
+                {typePath: 'testcase', collectionName: 'TestCases', parentField: 'WorkProduct'}
+            ],
+            defectsuite: [
+                {typePath: 'defect', collectionName: 'Defects', parentField: 'DefectSuites'},
+                {typePath: 'testcase', collectionName: 'TestCases', parentField: 'WorkProduct'}
+            ],
+            testset: [
+                {typePath: 'testcase', collectionName: 'TestCases', parentField: 'TestSets'}
+            ],
+            testcase: [
+                {typePath: 'defect', collectionName: 'Defects', parentField: 'TestCase'}
+            ],
+            attributedefinition: [
+                {typePath: 'allowedattributevalue', collectionName: 'AllowedValues', parentField: 'AttributeDefinition'}
+            ]
+        };
+    }
+});
+
+
+
+// Ext.override(Ext.data.TreeStore, {
+
+//     doSort: function(sorterFn) {
+//         var me = this;
+//         console.log(sorterFn,me.sorters.getRange());
+//         if (me.remoteSort) {
+//             //the load function will pick up the new sorters and request the sorted data from the proxy
+//             me.load();
+//         } else {
+//             me.tree.sort(sorterFn, true);
+//             me.fireEvent('datachanged', me);
+//             me.fireEvent('refresh', me);
+//         }
+//         me.fireEvent('sort', me, me.sorters.getRange());
+//     }
+// });
+                //template
+Ext.define('CArABU.technicalservices.ResultGraphTemplate',{
+    extend: 'Ext.XTemplate',
+
+    /**
+     * @cfg {String}
+     * define a width if necessary to fit where it's being used
+     */
+    width: '90%',
+    /**
+     * @cfg {String}
+     * define a height if necessary to fit where it's being used
+     */
+    height: '20px',
+
+    config: {
+
+        calculateColorFn: function(stateIdx){
+            return colors[stateIdx];
+        },
+        getContainerClass: function(recordData) {
+            return '';
+        },
+        getClickableClass: function(){
+            return '';
+        },
+        getDimensionStyle: function(){
+            return 'width: ' + this.width + '; height: ' + this.height + '; line-height: ' + this.height + ';display: inline-block';
+        },
+        calculateWidth: function (values, color) {
+            var total = Ext.Array.sum(Ext.Object.getValues(values));
+            if (total > 0){
+              var pct = (values[color] || 0)/total * 100;
+              return pct + '%';
+            }
+            return 0;
+        }
+    },
+
+    constructor: function(config) {
+        var templateConfig = [
+                '<tpl>',
+                '<div class="progress-bar-container {[this.getClickableClass()]} {[this.getContainerClass(values)]}" style="{[this.getDimensionStyle()]}">',
+                '<tpl foreach=".">',
+                  '<div class="rly-progress-bar" style="text-align:center;background-color: {$}; width: {[this.calculateWidth(parent,xkey)]}; "></div>',
+                '</tpl>',
+                '</div>',
+                '</tpl>'
+            ];
+
+        return this.callParent(templateConfig);
+    }
+});
+                Ext.define("CArABU.app.TSApp", {
     extend: 'Rally.app.App',
     componentCls: 'app',
     logger: new CArABU.technicalservices.Logger(),
@@ -1003,3 +1696,45 @@ Ext.define("CArABU.app.TSApp", {
 
 
 });
+
+
+            Rally.launchApp('CArABU.app.TSApp', {
+                name:"Feature Test Case Coverage Report",
+                parentRepos:"",
+                version:"0.2.0"
+            });
+
+        });
+    </script>
+
+
+
+    <style type="text/css">
+        .x-border-layout-ct {
+  background-color: white;
+}
+/* fix for grid hscroll when rows are tall and push hscroll off bottom of screen. Force it on */
+.x-grid-body.x-panel-body {
+  overflow-x: auto;
+}
+.tsinfolink {
+  position: absolute;
+  right: 0px;
+  width: 14px;
+  height: 14px;
+  border-radius: 7px;
+  text-align: center;
+  color: white;
+  background: #C0C0C0;
+  border-style: solid;
+  border-width: 1px;
+  margin-top: 25px;
+  margin-right: 5px;
+  cursor: pointer;
+}
+
+    </style>
+</head>
+<body>
+</body>
+</html>

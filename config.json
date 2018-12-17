@@ -3,5 +3,17 @@
     "sdk": "2.1",
     "version": "1.0.1",
     "className": "CArABU.app.TSApp",
-    "artifact": "F425"
+    "artifact": "F425",
+    "javascript": [
+        "src/javascript/utils/__ts-info-link.js",
+        "src/javascript/utils/__ts-logger.js",
+        "src/javascript/utils/__ts-utilities.js",
+        "src/javascript/utils/_chunk-store.js",
+        "src/javascript/utils/_override.js",
+        "src/javascript/utils/_result-graph-template.js",
+        "src/javascript/app.js"
+    ],
+    "css": [
+        "src/style/app.css"
+    ]
 }
