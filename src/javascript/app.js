@@ -361,11 +361,11 @@ Ext.define("CArABU.app.TSApp", {
                     load: me._addTotals,
                     viewChange: me.updateView,
                     scope: me
-                  }
-                  ,         
-                  height: 500
-                  ,
-                  width:me.getSetting('gridWidth')
+                  },         
+			            width      : Ext.getBody().getWidth() - 20,
+      			      height     : Ext.getBody().getHeight() - 20,
+//                  height: 500,
+//                  width:me.getSetting('gridWidth')
               });
 
         me.setLoading(false);
