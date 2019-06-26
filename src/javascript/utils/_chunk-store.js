@@ -1,6 +1,6 @@
 Ext.define('CArABU.technicalservices.chunk.Store',{
 
-    MAX_CHUNK_SIZE: 50,
+    MAX_CHUNK_SIZE: 10,
     logger: new CArABU.technicalservices.Logger(),
 
     constructor: function(config) {
@@ -40,8 +40,9 @@ Ext.define('CArABU.technicalservices.chunk.Store',{
         return deferred;
     },
 
-    _fetchChunk: function(objectIDs, config){
-        this.logger.log('chunk.Store._fetchChunk',objectIDs, config);
+    _fetchChunk: function(objectIDs, config){ 
+    	
+      	this.logger.log('chunk.Store._fetchChunk',objectIDs, config);
         var deferred = Ext.create('Deft.Deferred');
 
         var chunkProperty = this.chunkProperty,
@@ -60,7 +61,6 @@ Ext.define('CArABU.technicalservices.chunk.Store',{
             filters = filters.and(config.filters);
         }
         this.logger.log('chunk.Store._fetchChunk',filters.toString());
-
         var fetch = config.fetch || true,
             model = config.model || 'HierarchicalRequirement';
 

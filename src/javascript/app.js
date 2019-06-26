@@ -87,7 +87,7 @@ Ext.define("CArABU.app.TSApp", {
        // console.log('releases >',me.down('#releaseCombo').value);
 
         var cb = me.down('#releaseCombo');
-        //console.log(cb);
+console.log("CB Value: ", cb);
         if(cb.valueModels.length == 0){
             Rally.ui.notify.Notifier.showError({ message: "Please select one or more releases to display the report" });
             return;
@@ -96,7 +96,8 @@ Ext.define("CArABU.app.TSApp", {
         var pi_object_ids = [];
 
 
-        me.setLoading(true);
+//        me.setLoading(true);
+        me.setLoading('Gathering Portfolio Items...');
         me._getSelectedPIs(me.modelNames[0]).then({
             success: function(records){
                 // console.log('_getSelectedPIs>>',records);
@@ -107,27 +108,32 @@ Ext.define("CArABU.app.TSApp", {
                     pi_object_ids.push(r.get('ObjectID'));
                 });
 
+        me.setLoading('Gathering Stories and TestCases...');
 
                 Deft.Promise.all([me._getTCFromSnapShotStore(pi_object_ids),me._getUSFromSnapShotStore(pi_object_ids)]).then({
                     success: function(results){
                         console.log('results',results);
 
                         me.lb_tc_results = results[0];
+//console.log("TC Results", me.lb_tc_results);
                         var tc_filter = [];
                         me.lb_us_results = results[1];
+//console.log("US Results", me.lb_us_results);
                         var us_filter = [];                        
                         Ext.Array.each(results[0], function(tc){
-                            tc_filter.push(tc.get('_ItemHierarchy')[tc.get('_ItemHierarchy').length - 2]);
+//                            tc_filter.push(tc.get('_ItemHierarchy')[tc.get('_ItemHierarchy').length - 2]);
+                            tc_filter.push(tc.get('WorkProduct'));
                         });
-
+console.log("TC Filter", tc_filter);                        
                         me._getTCs(tc_filter).then({
                             success: function(records){
                                 console.log('_getTCs>>',records);
                                 // me.totalTaskTimeSpent = 0;
-                                me.lastVerdict = {}
+                                me.lastVerdict = {};
                                 Ext.Array.each(records,function(tc){
                                     me.lastVerdict[tc.get('ObjectID')] = tc.get('LastVerdict');
                                 });
+console.log("LV Array", me.lastVerdict);
 
                                 Ext.create('Rally.data.wsapi.TreeStoreBuilder').build({
                                     models: me.modelNames,
@@ -170,6 +176,8 @@ Ext.define("CArABU.app.TSApp", {
     _getTCs: function(filters){
         var deferred = Ext.create('Deft.Deferred');
         var me = this;
+        this.setLoading('Reading TestCase Results...');
+
 
         Ext.create('CArABU.technicalservices.chunk.Store',{
             storeConfig: {
@@ -188,7 +196,8 @@ Ext.define("CArABU.app.TSApp", {
 
         return deferred.promise;
     }, 
-
+    
+/*
     _getUserStories: function(filters){
         var deferred = Ext.create('Deft.Deferred');
         var me = this;
@@ -210,6 +219,7 @@ Ext.define("CArABU.app.TSApp", {
 
         return deferred.promise;
     }, 
+*/
 
     _getTCFromSnapShotStore:function(piObjectIDs){
         var me = this;
@@ -294,7 +304,7 @@ Ext.define("CArABU.app.TSApp", {
     },
 
     _addGrid: function (store) {
-
+console.log('grid store in _addGrid', store);
         var me = this;
         var context = me.getContext();
         store.on('load', me._updateAssociatedData, me);
@@ -622,6 +632,8 @@ Ext.define("CArABU.app.TSApp", {
     },
 
     _updateAssociatedData: function(store, node, records, success){
+console.log('UAD Records', records);
+
         var me = this;
         me.suspendLayouts();
         var record = {};
@@ -929,6 +941,8 @@ Ext.define("CArABU.app.TSApp", {
         var deferred = Ext.create('Deft.Deferred');
         var me = this;
         var default_config = {
+        		enablePostGet: true,
+        		pageSize: 2000,
             model: 'Defect',
             fetch: ['ObjectID']
         };
